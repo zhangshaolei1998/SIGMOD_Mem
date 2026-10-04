@@ -1,0 +1,24 @@
+%!TEX root = ../main.tex
+\begin{table}[t]
+    \centering
+    \small
+    \caption{One aggregation query traced through three systems. The two
+      baselines fail differently, and each failure is removed by a different
+      layer of \sys{}.}
+    \label{tbl:casestudy}
+    \begin{tabular}{@{}llcc@{}}
+        \toprule
+        \textbf{System} & \textbf{Retrieval and reasoning} & \textbf{Calls} & \textbf{Answer} \\
+        \midrule
+        Full-Context   & count left implicit & 1 & \textcolor{dropred}{5} \\
+        Zep~\cite{zep} & predicate unresolved & 1 & \textcolor{dropred}{4} \\
+        \midrule
+        \ourgroup{4}{\sys{}, layer by layer} \\
+        \multicolumn{4}{@{}l}{\quad \emph{Planner} routes on the quantifier marker} \\
+        \multicolumn{4}{@{}l}{\quad \emph{Second-order memory} fronts this user's resolved entities} \\
+        \multicolumn{4}{@{}l}{\quad \emph{Operator} decides each candidate, then tallies} \\
+        \multicolumn{4}{@{}l}{\quad \emph{Executor} withholds the third call on agreement} \\
+        \textbf{\sys{}} & explicit per-item decision & 2 & \textcolor{cadmiumgreen}{\textbf{3}} \\
+        \bottomrule
+    \end{tabular}
+\end{table}

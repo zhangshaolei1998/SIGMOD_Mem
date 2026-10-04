@@ -1,0 +1,26 @@
+%!TEX root = ../main.tex
+\begin{table}[t]
+    \centering
+    \small
+    \caption{Plan-selection quality and parameter stability on \membench. The
+      upper block compares the zero-supervision planner against an LLM planner
+      that spends one call per query and against a fixed planner. The lower
+      block varies the two parameters \sys{} fixes system-wide around their
+      defaults $\theta{=}0.6$ and $\alpha{=}0.5$, holding all else equal.}
+    \label{tbl:routing}
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{@{}lccc@{}}
+        \toprule
+        \textbf{Planner} & \textbf{Class acc.} & \textbf{Planner calls} & \textbf{End-to-end acc.} \\
+        \midrule
+        Surface rules (ours) & 91.4 & 0 & 92.8 \\
+        LLM planner          & 95.1 & 1 & 93.2 \\
+        Always \point        & 61.3 & 0 & 87.5 \\
+        \midrule
+        \tblgroup{4}{Parameter perturbation} \\
+        $\theta \in [0.4, 0.8]$  & \multicolumn{3}{c}{end-to-end acc.\ 92.3--92.9} \\
+        $\alpha \in [0.3, 0.7]$  & \multicolumn{3}{c}{end-to-end acc.\ 92.2--92.8} \\
+        \bottomrule
+    \end{tabular}
+    \Description{Planner comparison and parameter sensitivity on MemBench.}
+\end{table}

@@ -1,0 +1,28 @@
+%!TEX root = ../main.tex
+\begin{table}[t]
+    \centering
+    \small
+    \caption{Accuracy by plan class on \membench. Every system handles point
+      lookups well, and the systems separate on aggregation and comparison,
+      which is where an explicit plan replaces free-form reasoning.}
+    \label{tbl:perclass}
+    \begin{tabular}{@{}lccc@{}}
+        \toprule
+        \textbf{Method} & \opPOINT & \opAGG & \opCMP \\
+        \midrule
+        \tblgroup{4}{Prompting baselines} \\
+        Full-Context~\cite{longcontext}    & 90.9 & 64.4 & 84.2 \\
+        RAG~\cite{rag}                     & 91.8 & 67.1 & 85.8 \\
+        \addlinespace[2pt]
+        \tblgroup{4}{Memory systems} \\
+        MemGPT~\cite{memgpt}               & 92.9 & 68.5 & 87.0 \\
+        Mem0~\cite{mem0}                   & 93.9 & 70.2 & \second{88.1} \\
+        Mem0$^{g}$~\cite{mem0}             & 94.1 & \second{71.9} & 85.4 \\
+        Zep~\cite{zep}                     & \second{94.3} & 71.2 & 85.4 \\
+        LongMemEval-Fw~\cite{longmemeval}  & 93.8 & 70.8 & 84.7 \\
+        \addlinespace[2pt]
+        \ourgroup{4}{Ours} \\
+        \textbf{\sys{}} & \best{94.6} & \best{78.0} & \best{91.2} \\
+        \bottomrule
+    \end{tabular}
+\end{table}

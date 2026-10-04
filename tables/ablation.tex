@@ -1,0 +1,35 @@
+%!TEX root = ../main.tex
+\begin{table}[t]
+    \centering
+    \small
+    \caption{Removing one component at a time. Each layer contributes on a
+      distinct axis, accuracy for the framework, accuracy under repeated
+      queries for the second-order memory, and cost for the executor,
+      confirming the three are complementary.}
+    \label{tbl:ablation}
+    \begin{tabular}{@{}lccccc@{}}
+        \toprule
+        \multirow{2}{*}{\textbf{Configuration}}
+            & \multicolumn{2}{c}{\textbf{\membench}}
+            & \multicolumn{2}{c}{\textbf{\lmev}} \\
+        \cmidrule(lr){2-3} \cmidrule(l){4-5}
+            & \textbf{Acc.} & \textbf{Calls} & \textbf{Acc.} & \textbf{Calls} \\
+        \midrule
+        \textbf{\sys{}}               & \best{92.8} & \best{444} & \best{10.3} & \best{602} \\
+        \addlinespace[2pt]
+        \tblgroup{5}{Framework} \\
+        w/o planner          & 89.1 & 900 & 8.8 & 903 \\
+        w/o physical operators        & 87.9 & 900 & 8.3 & 903 \\
+        w/o catalog                   & 86.7 & 900 & 7.6 & 903 \\
+        \addlinespace[2pt]
+        \tblgroup{5}{Second-order memory} \\
+        w/o workload log              & 92.1 & 444 & 8.6 & 602 \\
+        w/o index warming             & 92.5 & 444 & 9.3 & 602 \\
+        w/o session eviction          & 92.8 & 444 & 10.1 & 651 \\
+        \addlinespace[2pt]
+        \tblgroup{5}{Cost-aware executor} \\
+        w/o plan-class budget         & 92.5 & 756 & 10.3 & 903 \\
+        w/o stability short-circuit   & 92.8 & 532 & 10.3 & 723 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

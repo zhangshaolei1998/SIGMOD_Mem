@@ -1,0 +1,96 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MemCatalog paper commands (ACM SIGMOD / acmart sigconf)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{amsthm}
+\newtheorem{example}{Example}
+
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{tikz}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{xspace}
+\usepackage{array}
+\usepackage{makecell}
+\usepackage{graphicx}
+
+\usetikzlibrary{shapes.geometric,shapes.symbols,positioning,arrows.meta,fit,backgrounds,calc,shadows.blur}
+
+% ===== Math operators =====
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+% ===== System name =====
+\newcommand{\sys}{MemCatalog\xspace}
+\newcommand{\syst}{MemCatalog\xspace}
+\newcommand{\nlsql}{{NL2SQL}\xspace}
+
+% ===== Latin abbreviations =====
+\newcommand{\eg}{{\em e.g.,}\xspace}
+\newcommand{\ie}{{\em i.e.,}\xspace}
+\newcommand{\etc}{{\em etc.}\xspace}
+\newcommand{\etal}{{\em et al.}\xspace}
+
+% ===== Paragraph titles (ACM run-in heading convention) =====
+\newcommand{\stitle}[1]{\smallskip\noindent\textbf{#1}}
+\newcommand{\etitle}[1]{\smallskip\noindent\textit{#1}}
+
+% ===== Color palette =====
+\definecolor{cadmiumgreen}{rgb}{0.0, 0.42, 0.24}   % positive / gains
+\definecolor{dropred}{rgb}{0.75, 0.22, 0.17}       % negative / drops
+\definecolor{softblue}{HTML}{2C5F8D}               % primary highlight
+\definecolor{softorange}{HTML}{D97F1F}             % secondary highlight
+\definecolor{shadecolor}{RGB}{240,240,240}         % subtle background
+\definecolor{darkgray_x11}{HTML}{2E2E2E}
+\definecolor{lightblue}{HTML}{E8F0F8}
+\definecolor{lightgreen}{HTML}{E8F5E9}
+\definecolor{lightorange}{HTML}{FFF3E0}
+
+% ===== Result-cell helpers =====
+\newcommand{\best}[1]{\textbf{#1}}
+\newcommand{\second}[1]{\underline{#1}}
+\newcommand{\gain}[1]{{\color{cadmiumgreen}\small(+#1)}}
+\newcommand{\loss}[1]{{\color{dropred}\small(-#1)}}
+
+% ===== Named operator badges =====
+\newcommand{\opPOINT}{\textcolor{softblue}{\textsc{point}}}
+\newcommand{\opAGG}{\textcolor{softorange}{\textsc{aggregate}}}
+\newcommand{\opCMP}{\textcolor{cadmiumgreen}{\textsc{compare}}}
+
+% ===== Benchmark name macros =====
+\newcommand{\lmev}{{LME-v2}\xspace}
+\newcommand{\lmeo}{{LME-o}\xspace}
+\newcommand{\lmes}{{LME-s}\xspace}
+\newcommand{\lmem}{{LME-m}\xspace}
+\newcommand{\locomo}{{LoCoMo}\xspace}
+\newcommand{\evomem}{{EvoMem}\xspace}
+\newcommand{\membench}{{MemBench}\xspace}
+\newcommand{\dynamicmem}{{DynamicMem}\xspace}
+
+% ===== Query class shorthands =====
+\newcommand{\point}{\textsc{point}\xspace}
+\newcommand{\agg}{\textsc{aggregate}\xspace}
+\newcommand{\cmp}{\textsc{compare}\xspace}
+
+% ===== Global table typography (ACM booktabs style) =====
+\renewcommand{\arraystretch}{1.1}
+\setlength{\tabcolsep}{4.5pt}
+
+% Group header rows spanning a booktabs table.
+\newcommand{\tblgroup}[2]{\multicolumn{#1}{l}{\cellcolor{gray!12}\textit{#2}}}
+\newcommand{\ourgroup}[2]{\multicolumn{#1}{l}{\cellcolor{lightblue}\textit{#2}}}
+
+% Allow LaTeX to stretch line ends slightly to avoid marginal overfull boxes.
+\setlength{\emergencystretch}{3em}
+
+% ===== Experiment numbering and finding boxes (reference-paper convention) =====
+\usepackage{framed}
+\newcounter{mycounterexp}
+\newcommand{\expnum}{\stepcounter{mycounterexp}\arabic{mycounterexp}}
+\newcounter{mycounterfinding}
+\newcommand{\findingnum}{\stepcounter{mycounterfinding}\arabic{mycounterfinding}}
+\definecolor{shadecolor}{RGB}{242,242,242}
+\newcommand{\finding}[1]{%
+  \begin{shaded}\noindent\textbf{Finding \findingnum: #1}\end{shaded}}

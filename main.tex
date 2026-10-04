@@ -1,0 +1,99 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% MemCatalog: A DBMS-style Memory Management System for LLM Agents
+%% ACM SIGMOD submission (acmart sigconf)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% For submission and double-blind review, use:
+%%   \documentclass[sigconf, anonymous, review]{acmart}
+%% For camera-ready, use:
+%%   \documentclass[sigconf]{acmart}
+\documentclass[sigconf, review, anonymous]{acmart}
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{Bib\TeX}}}
+
+%% Rights management information. Replace with the values supplied by ACM
+%% after the rights form is completed.
+\setcopyright{acmlicensed}
+\copyrightyear{2026}
+\acmYear{2026}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmConference[SIGMOD '26]{Proceedings of the 2026 International Conference on
+  Management of Data}{June 14--19, 2026}{Bengaluru, India}
+\acmISBN{978-1-4503-XXXX-X/2026/06}
+
+%% Paper-specific commands, colors, and macros.
+\input{_commands}
+
+\begin{document}
+
+\title{\sys{}: A DBMS-style Memory Management System for LLM Agents}
+
+\author{Anonymous Author(s)}
+\affiliation{%
+  \institution{Anonymous Institution}
+  \city{Anonymous City}
+  \country{Anonymous Country}
+}
+\email{anon@anon.org}
+
+\renewcommand{\shortauthors}{Anonymous Author(s)}
+
+\begin{abstract}
+LLM agents accumulate memory that grows to hundreds of thousands of tokens per user, and in some settings to millions of tokens. The dominant treatment of this memory remains an unmanaged string collection: raw sessions concatenated into an LLM prompt, or dense vectors retrieved by static similarity. This is the pre-DBMS era of agent memory, in which systems can \emph{store} but cannot \emph{manage} their memory. We introduce \sys{}, a DBMS-style memory management system for LLM agents that lifts agent memory into first-class managed data. \sys{} comprises a foundational framework and two novel optimizations built upon it. (i)~A full query-optimization stack, consisting of a catalog, a zero-supervision planner, and three physical operators (index scan, hash-aggregate, and sort-merge), dispatches each query to the matching physical plan. (ii)~A \emph{Second-Order Memory} logs per-user access patterns and reshapes catalog priorities, a workload-to-storage feedback loop transferred from classical DBMS self-tuning to agent memory for the first time. (iii)~A \emph{Cost-Aware Executor} allocates the LLM call budget by plan class and repurposes self-consistency as a cost signal, not a quality voter. Across eight long-term memory benchmarks, \sys{} matches or improves the strongest prior memory system on every one, by an average of $2.6$ points and by up to $5.6$ points on \lmes. On \membench{} it further reduces LLM calls by $50.7\%$ relative to a Uniform-$K{=}3$ reference while attaining higher accuracy.
+\end{abstract}
+
+%% CCS concepts. Generated from https://dl.acm.org/ccs.
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10002951.10002952.10002953</concept_id>
+       <concept_desc>Information systems~Data management systems</concept_desc>
+       <concept_significance>500</concept_significance>
+       </concept>
+   <concept>
+       <concept_id>10002951.10002952.10003190.10003195</concept_id>
+       <concept_desc>Information systems~Query optimization</concept_desc>
+       <concept_significance>500</concept_significance>
+       </concept>
+   <concept>
+       <concept_id>10010147.10010178.10010179</concept_id>
+       <concept_desc>Computing methodologies~Natural language processing</concept_desc>
+       <concept_significance>300</concept_significance>
+       </concept>
+   <concept>
+       <concept_id>10010147.10010178.10010219.10010220</concept_id>
+       <concept_desc>Computing methodologies~Multi-agent systems</concept_desc>
+       <concept_significance>100</concept_significance>
+       </concept>
+ </ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Information systems~Data management systems}
+\ccsdesc[500]{Information systems~Query optimization}
+\ccsdesc[300]{Computing methodologies~Natural language processing}
+\ccsdesc[100]{Computing methodologies~Multi-agent systems}
+
+\keywords{Agent memory, query optimization, large language models,
+  self-tuning systems, cost-based optimization}
+
+\maketitle
+
+% ============ Sections ============
+\input{secs/01introduction}
+\input{secs/02preliminaries}
+\input{secs/03overview}
+\input{secs/04framework}
+\input{secs/05secondorder}
+\input{secs/06executor}
+\input{secs/07experiments}
+\input{secs/08related}
+
+\begin{acks}
+Anonymized for submission.
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{memcatalog}
+
+\end{document}

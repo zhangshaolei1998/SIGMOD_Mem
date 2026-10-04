@@ -1,0 +1,27 @@
+%!TEX root = ../main.tex
+\begin{table}[t]
+    \centering
+    \small
+    \caption{Behavior as history grows on the three LongMemEval variants.
+      Read-path cost is governed by the plan class and not by history length,
+      so it stays flat while the prompting baseline grows with the context
+      it must carry.}
+    \label{tbl:scaling}
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{@{}lccc@{}}
+        \toprule
+        \textbf{History} & \textbf{Calls / query} & \textbf{Latency (s)} & \textbf{Accuracy} \\
+        \midrule
+        \tblgroup{4}{Full-Context} \\
+        $\sim$40K  (\lmeo)  & 1.0 & 2.3  & 49.3 \\
+        $\sim$115K (\lmes)  & 1.0 & 5.8  & 43.6 \\
+        $\sim$1.5M (\lmem)  & 1.0 & 47.6 & 58.5 \\
+        \addlinespace[2pt]
+        \tblgroup{4}{\sys{}} \\
+        $\sim$40K  (\lmeo)  & 1.9 & 3.2 & 67.2 \\
+        $\sim$115K (\lmes)  & 1.9 & 3.4 & 64.9 \\
+        $\sim$1.5M (\lmem)  & 1.9 & 3.5 & 75.2 \\
+        \bottomrule
+    \end{tabular}
+    \Description{Cost and accuracy as history length grows from 40K to 1.5M tokens.}
+\end{table}

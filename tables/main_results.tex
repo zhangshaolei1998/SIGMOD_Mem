@@ -1,0 +1,39 @@
+%!TEX root = ../main.tex
+\begin{table*}[t]
+    \centering
+    \small
+    \caption{Accuracy across eight long-term memory benchmarks. \sys{} matches
+      or improves the strongest prior system on every benchmark, and the margin
+      is widest on the long-horizon and state-inference groups where a single
+      retrieval pass is least sufficient.}
+    \label{tbl:main_results}
+    \begin{tabular}{@{}l ccc ccc cc@{}}
+        \toprule
+        \multirow{2}{*}{\textbf{Method}}
+            & \multicolumn{3}{c}{\textbf{Conversational memory}}
+            & \multicolumn{3}{c}{\textbf{Long-horizon memory}}
+            & \multicolumn{2}{c}{\textbf{Personalized state}} \\
+        \cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(l){8-9}
+            & \textbf{\locomo} & \textbf{\lmev} & \textbf{\membench}
+            & \textbf{\lmeo} & \textbf{\lmes} & \textbf{\lmem}
+            & \textbf{\evomem} & \textbf{\dynamicmem} \\
+        \midrule
+        \tblgroup{9}{Prompting baselines} \\
+        Full-Context~\cite{longcontext}   & 52.3 & 4.5 & 86.7 & 49.3 & 43.6 & 58.5 & 16.7 & 33.5 \\
+        RAG~\cite{rag}                    & 53.1 & 4.9 & 87.8 & 50.8 & 45.1 & 59.1 & 17.3 & 34.1 \\
+        \addlinespace[2pt]
+        \tblgroup{9}{Memory systems} \\
+        MemGPT~\cite{memgpt}              & 54.5 & 6.3 & 89.7 & 54.1 & 48.4 & 61.1 & 18.0 & 34.3 \\
+        Mem0~\cite{mem0}                  & 56.4 & 7.2 & \second{91.2} & 58.3 & 54.2 & 65.2 & 20.4 & 34.5 \\
+        Mem0$^{g}$~\cite{mem0}            & 57.1 & 7.5 & 90.8 & 60.1 & 56.7 & 67.1 & 21.2 & 34.7 \\
+        Zep~\cite{zep}                    & \second{58.2} & 8.1 & 90.4 & \second{62.2} & \second{59.3} & \second{70.3} & \second{22.1} & \second{34.9} \\
+        LongMemEval-Fw~\cite{longmemeval} & 57.3 & \second{9.4} & 90.1 & 61.7 & 58.8 & 69.4 & 21.6 & 34.6 \\
+        \addlinespace[2pt]
+        \ourgroup{9}{Ours} \\
+        \textbf{\sys{}}
+            & \best{58.8} & \best{10.3} & \best{92.8}
+            & \best{67.2} & \best{64.9} & \best{75.2}
+            & \best{24.6} & \best{34.9} \\
+        \bottomrule
+    \end{tabular}
+\end{table*}

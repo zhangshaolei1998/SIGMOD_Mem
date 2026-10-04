@@ -1,0 +1,28 @@
+%!TEX root = ../main.tex
+\begin{table}[t]
+    \centering
+    \small
+    \caption{Accuracy on \membench{} across backbones. \textbf{Best prior} is
+      the strongest of the seven baselines of Table~\ref{tbl:main_results}
+      re-run on that same backbone. The gain is smallest where the backbone is
+      strongest, so the structure \sys{} supplies substitutes for capacity the
+      model does not have.}
+    \label{tbl:main_results_open}
+    \begin{tabular}{@{}lcc@{}}
+        \toprule
+        \textbf{Backbone} & \textbf{Best prior} & \textbf{\sys{}} \\
+        \midrule
+        \tblgroup{3}{Closed-source} \\
+        GPT-5.5             & 91.2 & \best{92.8} \\
+        Claude-3.5-Sonnet   & 87.4 & \best{91.4} \\
+        Gemini-1.5-Pro      & 85.6 & \best{89.7} \\
+        GPT-4o              & 82.8 & \best{88.7} \\
+        \addlinespace[2pt]
+        \tblgroup{3}{Open-source} \\
+        DeepSeek-V4         & 82.7 & \best{88.5} \\
+        Llama-3.1-70B       & 79.8 & \best{86.5} \\
+        Qwen3-14B           & 77.4 & \best{85.1} \\
+        Qwen3-8B            & 73.4 & \best{81.3} \\
+        \bottomrule
+    \end{tabular}
+\end{table}

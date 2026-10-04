@@ -1,0 +1,47 @@
+%!TEX root = ../main.tex
+\section{Preliminaries}
+\label{sec:preliminary}
+
+This section fixes notation, defines the agent memory management problem, describes how any memory-augmented LLM agent processes a query, and lists the three access primitives that structure the rest of the paper.
+
+\subsection{Interaction History and Memory Query}
+\label{subsec:prelim-data}
+
+\stitle{Interaction History.}
+An LLM agent interacts with a user across a sequence of \emph{sessions} $\mathcal{H}=\{s_1,\dots,s_N\}$, where $s_i=(t_i,\mathrm{txt}_i)$ is a timestamp $t_i$ paired with a natural-language transcript $\mathrm{txt}_i$ of mixed user and assistant turns. Sessions are read-only after they close, and $\mathcal{H}$ is unbounded and grows monotonically over time. In our benchmarks a single user's history reaches up to $1.5$M tokens spread over tens of sessions~\cite{longmemeval,locomo}, well beyond any current context window at inference time.
+
+\stitle{Memory Query.}
+A memory query is a triple $q=(\mathrm{Q},\mathcal{C},\tau)$, where $\mathrm{Q}$ is a natural-language question, $\mathcal{C}$ is an optional set of answer choices (empty for open-ended questions), and $\tau$ is the timestamp at which the query is issued. The agent must return an answer $\hat{a}$ derivable from the history available at that moment, $\mathcal{H}_{\leq\tau}=\{s_i:t_i\leq\tau\}$. Answers are scored against a gold reference, with accuracy or F1 computed on $\hat{a}$ (Section~\ref{subsec:setup}).
+
+\subsection{Problem Statement}
+\label{subsec:prelim-problem}
+
+Given a stream of queries $q_1,q_2,\dots$ over an evolving $\mathcal{H}$, an \emph{agent memory management system} produces answers $\hat{a}_1,\hat{a}_2,\dots$ under three simultaneous objectives.
+\begin{enumerate}
+\item[\textbf{(O1)}] \textbf{Accuracy.} Maximize the fraction of $\hat{a}_t$ that match the gold answer for $q_t$.
+\item[\textbf{(O2)}] \textbf{Bounded per-query cost.} Keep the per-query LLM cost $\mathrm{cost}(q_t)$ bounded and manageable as $|\mathcal{H}|$ grows, letting the system scale to long histories and heavy usage.
+\item[\textbf{(O3)}] \textbf{Improvement over time.} Later queries on the same $\mathcal{H}$ should improve, or at least not degrade, given the information gathered from earlier ones.
+\end{enumerate}
+Prior memory systems have focused overwhelmingly on \textbf{(O1)}~\cite{mem0,zep,memgpt,longmemeval}: their headline results report accuracy on a single test query per user, with cost and per-user adaptation treated implicitly or not at all. \sys{} treats \textbf{(O2)} and \textbf{(O3)} as first-class objectives on par with \textbf{(O1)}, and enforces each by a dedicated architectural layer, the executor for cost (Section~\ref{sec:executor}) and the second-order memory for per-user improvement (Section~\ref{sec:secondorder}).
+
+\subsection{How an LLM Agent Uses Memory}
+\label{subsec:prelim-flow}
+
+Regardless of the particular memory system, an LLM agent processes each user interaction along two coupled paths. A \emph{write path} updates the memory store when a new session closes, and a \emph{read path} answers a query using the accumulated store. Both paths spend LLM calls, and both are what \sys{} instruments.
+
+Every memory system, whatever its internal representation, runs the same two paths. A \emph{write path} fires when a session closes, converting $s_i$ into the store's representation and appending it to a memory store $\mathcal{M}$. Systems differ here in representation alone, with long-context prompting keeping $s_i$ verbatim, RAG embedding chunks of it, Mem0 extracting facts into a dictionary, and Zep building temporal-graph edges. A \emph{read path} fires per query and proceeds in three steps that are common to all of them, \textbf{(R1)} retrieving a candidate set from $\mathcal{M}$, \textbf{(R2)} packing candidates into a grounding block that fits the context window, and \textbf{(R3)} reasoning over that block to produce $\hat{a}_t$.
+
+Two observations about this structure motivate the rest of the paper. First, $\mathrm{cost}(q_t)$ is dominated by R3, and replicated sampling multiplies it on every query without regard to whether the query needed the samples. Second, prior systems run an identical R1--R3 pipeline for every query and retain nothing from the outcome. Neither the shape of $\mathrm{Q}_t$ nor the history of this user's earlier queries changes how the next one is served.
+
+\subsection{Memory Access Primitives}
+\label{subsec:prelim-primitives}
+
+Empirically, natural-language queries against agent memory fall into three access patterns that differ in the shape of the computation they require. This taxonomy is the entry point for both the planner and the physical operator library of Section~\ref{sec:framework}.
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Point lookup (\opPOINT).} Retrieve a single stored fact by attribute key, \eg \emph{``Who is my mortgage provider?''}. The answer is a single value from the catalog's attribute index and does not require aggregation or comparison.
+\item \textbf{Aggregation (\opAGG).} Compute a quantity (typically a count) over multiple records, \eg \emph{``How many of my events involve outdoor activity?''}. The answer requires enumerating candidates from the entity index and applying a predicate to each.
+\item \textbf{Comparison (\opCMP).} Rank or order two or more records on a shared attribute, \eg \emph{``Which lasted longer, the Basel trip or the Zurich conference?''}. The answer requires extracting the compared key from each candidate and reducing it to an $\argmax$.
+\end{itemize}
+
+These three classes have direct DBMS analogues (\emph{index scan}, \emph{hash-aggregate}, \emph{sort-merge}) that Sections~\ref{subsec:planner} and~\ref{subsec:budget} exploit, and the LLM's failure modes differ across them (reliable point lookup, undercount on scattered aggregation~\cite{ruler}, and misalignment on cross-passage comparison). Prior memory systems collapse the three into one retrieve-then-generate pipeline and inherit all three failure modes. \sys{} splits them and gives each its own operator.

@@ -1,0 +1,23 @@
+%!TEX root = ../../main.tex
+% Placeholder: framework overview figure (two-column span), to be hand-drawn.
+\begin{figure*}[t]
+    \centering
+    \setlength{\fboxrule}{0.8pt}%
+    \textcolor{gray!55}{\framebox[\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax]{%
+      \begin{minipage}[c][0.24\textwidth][c]{0.95\textwidth}
+        \centering
+        \textcolor{gray!65}{\normalsize\itshape [Placeholder] Framework overview of \sys{}}\\[0.6em]
+        \textcolor{gray!55}{\small catalog $+$ planner $+$ physical operators
+          $\;\longrightarrow\;$ second-order memory $\;\longrightarrow\;$ cost-aware executor}
+      \end{minipage}}}
+    \caption{Overview of \sys{}. A foundational framework (catalog, planner,
+      physical operators) is augmented by two optimization layers:
+      the Second-Order Memory, which closes a workload-to-storage feedback loop,
+      and the Cost-Aware Executor, which combines plan-class budgeting with a
+      stability short-circuit.}
+    \Description{Placeholder box for the system architecture diagram of
+      MemCatalog, showing the catalog, planner, and physical operators
+      as the base framework, with the second-order memory and the cost-aware
+      executor layered on top.}
+    \label{fig:framework_overview}
+\end{figure*}

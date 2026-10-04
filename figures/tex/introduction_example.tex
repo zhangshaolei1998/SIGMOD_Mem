@@ -1,0 +1,86 @@
+%!TEX root = ../../main.tex
+% Figure 1: motivating example (single column), drawn in TikZ.
+\begin{figure}[t]
+    \centering
+    \begin{tikzpicture}[
+        font=\footnotesize,
+        >={Stealth[length=4.2pt,width=3.4pt]},
+        qbox/.style={draw=darkgray_x11!50, rounded corners=2.5pt, fill=gray!7,
+                     text width=2.25cm, align=left, inner sep=3.5pt,
+                     execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+        plan/.style={draw=#1, line width=0.8pt, rounded corners=2.5pt, fill=#1!7,
+                     text width=1.42cm, align=center, inner sep=3.5pt},
+        op/.style={draw=#1, line width=0.8pt, rounded corners=2.5pt, fill=white,
+                   text width=2.84cm, align=left, inner sep=3.5pt},
+        band/.style={draw=darkgray_x11!50, rounded corners=2.5pt, fill=lightblue,
+                     text width=7.92cm, align=center, inner sep=3.5pt},
+        foot/.style={draw=darkgray_x11!50, rounded corners=2.5pt, fill=gray!10,
+                     text width=7.92cm, align=center, inner sep=3.5pt},
+        fb/.style={draw=cadmiumgreen, line width=0.8pt, rounded corners=2.5pt,
+                   fill=lightgreen, text width=2.84cm, align=left, inner sep=3.5pt},
+        flow/.style={->, draw=darkgray_x11!70, line width=0.8pt},
+        loop/.style={->, draw=cadmiumgreen, line width=0.8pt, rounded corners=3pt,
+                     dash pattern=on 2pt off 1.6pt},
+    ]
+
+    % ---- catalog band -------------------------------------------------
+    \node[band] (cat) at (3.96,2.30)
+      {\scriptsize Catalog $\mathrm{Cat}(\mathcal{H})$: entities, events,
+       relations, attributes\,---\,indexes $\mathcal{I}_e,\mathcal{I}_a$};
+
+    % ---- row 1: point lookup ------------------------------------------
+    \node[qbox] (q1) at (1.125,1.00)
+      {\textbf{Q1} \emph{``Who is my mortgage provider?''}};
+    \node[plan=softblue] (p1) at (3.71,1.00)
+      {\opPOINT\\[1pt]\scriptsize no quantifier};
+    \node[op=softblue] (o1) at (6.50,1.00)
+      {\scriptsize index scan $\mathcal{I}_a[\textsf{provider}]$\\
+       $\Rightarrow$ \textbf{Raiffeisen Basel}\\[1pt]
+       \scriptsize\textcolor{softblue}{1 LLM call}};
+
+    % ---- second-order memory ------------------------------------------
+    \node[fb] (fbk) at (6.50,-0.42)
+      {\scriptsize \textbf{Second-order memory}\\
+       log the hit entities, raise $\pi(e)$};
+
+    % ---- row 2: aggregation -------------------------------------------
+    \node[qbox] (q2) at (1.125,-1.85)
+      {\textbf{Q2} \emph{``How many of my events involve outdoor activity?''}};
+    \node[plan=softorange] (p2) at (3.71,-1.85)
+      {\opAGG\\[1pt]\scriptsize ``how many''};
+    \node[op=softorange] (o2) at (6.50,-1.85)
+      {\scriptsize enumerate 8 preheated events on $\mathcal{I}_e$, tally yes/no\\
+       $\Rightarrow$ \textbf{3}\\[1pt]
+       \scriptsize two samples agree, third call skipped\\[1pt]
+       \scriptsize\textcolor{softorange}{2 LLM calls}};
+
+    % ---- footer -------------------------------------------------------
+    \node[foot] (ft) at (3.96,-3.30)
+      {\scriptsize \sys{}: \textbf{3} LLM calls in total\quad versus\quad
+       Uniform-$K{=}3$: \textbf{6} calls};
+
+    % ---- flow arrows ---------------------------------------------------
+    \draw[flow] (q1.east) -- node[above,font=\scriptsize,inner sep=1.2pt]{$\rho$} (p1.west);
+    \draw[flow] (p1.east) -- node[above,font=\scriptsize,inner sep=1.2pt]{$\Omega_c$} (o1.west);
+    \draw[flow] (q2.east) -- node[above,font=\scriptsize,inner sep=1.2pt]{$\rho$} (p2.west);
+    \draw[flow] (p2.east) -- node[above,font=\scriptsize,inner sep=1.2pt]{$\Omega_c$} (o2.west);
+    \draw[flow] (cat.south -| o1.north) -- (o1.north);
+
+    % ---- feedback loop: read path back to storage ----------------------
+    \draw[loop] (o1.south) -- (fbk.north);
+    \draw[loop] (fbk.south) -- (o2.north);
+    \draw[loop] (fbk.west) -- (-0.26,-0.42) -- (-0.26,2.30) -- (cat.west);
+
+    \end{tikzpicture}
+    \caption{Motivating example. \sys{} selects a physical plan for each query
+      (\opPOINT{} or \opAGG), serves it with the minimum LLM-call budget, and
+      logs hit entities into second-order memory so that the next query reads
+      them first. The interaction costs three LLM calls in total, where a
+      Uniform-$K{=}3$ baseline would spend six.}
+    \Description{Two queries from the same user flow left to right. A point
+      lookup is dispatched to the point operator and answered in one LLM call;
+      its hit entities are logged by the second-order memory, which raises
+      their priority in the catalog so that the following aggregation query
+      reads them first and is answered in two calls.}
+    \label{fig:motivating}
+\end{figure}

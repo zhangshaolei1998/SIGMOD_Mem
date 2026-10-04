@@ -1,0 +1,75 @@
+%!TEX root = ../../main.tex
+% Cost-accuracy Pareto plot on MemBench.
+\begin{figure}[t]
+    \centering
+    \resizebox{0.98\columnwidth}{!}{%
+    \begin{tikzpicture}[
+        every node/.style={font=\footnotesize},
+        axis/.style={-Latex, thick, black},
+        tick/.style={black, thin},
+        grid/.style={gray!25, dashed, very thin},
+        pt/.style={circle, minimum size=6pt, inner sep=0pt},
+        lead/.style={gray!55, thin},
+    ]
+        \def\W{6.4}
+        \def\H{3.6}
+        %-------- axes with arrowheads only --------%
+        \draw[axis] (0,0) -- (\W+0.15,0);
+        \draw[axis] (0,0) -- (0,\H+0.15);
+        %-------- x ticks --------%
+        \foreach \x/\lbl in {0.0/1.0, 1.4/1.5, 2.8/2.0, 4.2/2.5, 5.6/3.0}{
+            \draw[tick] (\x,0) -- (\x,-0.09);
+            \node[below] at (\x,-0.09) {\lbl};
+        }
+        %-------- y ticks --------%
+        \foreach \y/\lbl in {0.0/86, 0.9/88, 1.8/90, 2.7/92, 3.6/94}{
+            \draw[tick] (0,\y) -- (-0.09,\y);
+            \node[left] at (-0.09,\y) {\lbl};
+        }
+        %-------- axis labels --------%
+        \node[below, font=\footnotesize] at (\W/2,-0.7) {\emph{Average LLM calls per query}};
+        \node[rotate=90, font=\footnotesize] at (-0.9,\H/2) {\emph{Accuracy on \membench{} (\%)}};
+        %-------- soft grid --------%
+        \foreach \x in {1.4, 2.8, 4.2, 5.6} \draw[grid] (\x,0) -- (\x,\H);
+        \foreach \y in {0.9, 1.8, 2.7, 3.6} \draw[grid] (0,\y) -- (\W,\y);
+        %-------- data points --------%
+        % x = (calls-1.0)*2.8;  y = (acc-86)*0.45
+        \node[pt, fill=gray!70]    at ({(1.00-1.0)*2.8}, {(86.7-86)*0.45}) (fc)   {};
+        \node[pt, fill=gray!70]    at ({(1.00-1.0)*2.8}, {(87.8-86)*0.45}) (rag)  {};
+        \node[pt, fill=softblue!70] at ({(1.4-1.0)*2.8}, {(89.7-86)*0.45}) (mgpt) {};
+        \node[pt, fill=softblue!70] at ({(1.5-1.0)*2.8}, {(91.2-86)*0.45}) (m0)   {};
+        \node[pt, fill=softblue!70] at ({(1.8-1.0)*2.8}, {(90.8-86)*0.45}) (m0g)  {};
+        \node[pt, fill=softblue!70] at ({(1.7-1.0)*2.8}, {(90.4-86)*0.45}) (zep)  {};
+        \node[pt, fill=softblue!70] at ({(1.6-1.0)*2.8}, {(90.1-86)*0.45}) (lfw)  {};
+        \node[pt, fill=softorange] at ({(3.00-1.0)*2.8}, {(89.1-86)*0.45}) (uni)  {};
+        \node[pt, fill=dropred, minimum size=8pt] at ({(1.48-1.0)*2.8},{(92.8-86)*0.45}) (mc) {};
+        %-------- pareto arrow --------%
+        \draw[dropred, dashed, thick, opacity=0.5] (fc.center) -- (mc.center);
+        %-------- labels with leaders, dispersed --------%
+        \node[anchor=west] (mcL) at (2.3, 3.35) {\textbf{\sys{} (ours)}};
+        \draw[lead] (mc) -- (mcL.west);
+        \node[anchor=west] (m0L)  at (2.5, 2.60) {Mem0 (91.2)};
+        \draw[lead] (m0) -- (m0L.west);
+        \node[anchor=west] (m0gL) at (2.9, 2.15) {Mem0$^{g}$ (90.8)};
+        \draw[lead] (m0g) -- (m0gL.west);
+        \node[anchor=west] (zepL) at (2.6, 1.80) {Zep (90.4)};
+        \draw[lead] (zep) -- (zepL.west);
+        \node[anchor=west] (lfwL) at (2.3, 1.45) {LongMemEval-Fw (90.1)};
+        \draw[lead] (lfw) -- (lfwL.west);
+        \node[anchor=west] (mgptL) at (2.0, 1.10) {MemGPT (89.7)};
+        \draw[lead] (mgpt) -- (mgptL.west);
+        \node[anchor=east] (uniL) at (5.5, 0.60) {Uniform-$K{=}3$ (89.1)};
+        \draw[lead] (uni) -- (uniL.east);
+        \node[anchor=west] (ragL) at (0.25, 0.90) {RAG (87.8)};
+        \draw[lead] (rag) -- (ragL.west);
+        \node[anchor=west] (fcL) at (0.25, 0.30) {Full-Context (86.7)};
+        \draw[lead] (fc) -- (fcL.west);
+    \end{tikzpicture}
+    }
+    \caption{Cost--accuracy Pareto on \membench{} (GPT-5.5, $n{=}300$). Each point is a system's average LLM calls per query (x-axis) versus its accuracy (y-axis). \sys{} occupies the upper-left corner: strictly higher accuracy than every prior memory system and strictly lower cost than the Uniform-$K{=}3$ reference. No prior system Pareto-dominates \sys{}.}
+    \Description{Scatter plot of average LLM calls per query against accuracy on
+      MemBench. MemCatalog sits in the upper-left region, with higher accuracy
+      than every prior memory system and lower cost than the uniform K equals
+      three reference.}
+    \label{fig:pareto}
+\end{figure}

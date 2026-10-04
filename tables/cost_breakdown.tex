@@ -1,0 +1,25 @@
+%!TEX root = ../main.tex
+\begin{table}[t]
+    \centering
+    \small
+    \caption{Calls per query on \membench. The two \sys{} rows share an accuracy
+      column, which isolates the short-circuit as a pure cost mechanism and
+      attributes the accuracy to the plan and not to the budget.}
+    \label{tbl:cost}
+    \setlength{\tabcolsep}{3pt}
+    \begin{tabular}{@{}lcccrc@{}}
+        \toprule
+        \multirow{2}{*}{\textbf{Configuration}}
+            & \multicolumn{3}{c}{\textbf{Calls per query}}
+            & \multirow{2}{*}{\textbf{Total}} & \multirow{2}{*}{\textbf{Acc.}} \\
+        \cmidrule(lr){2-4}
+            & \opPOINT & \opAGG & \opCMP & & \\
+        \midrule
+        Uniform, one call            & 1.00 & 1.00 & 1.00 & 300 & 86.7 \\
+        Uniform, three calls         & 3.00 & 3.00 & 3.00 & 900 & 89.1 \\
+        \addlinespace[2pt]
+        \sys{}, budget only          & 1.00 & 3.00 & 3.00 & 532 & 92.8 \\
+        \textbf{\sys{}}              & 1.00 & 2.30 & 2.18 & \best{444} & \best{92.8} \\
+        \bottomrule
+    \end{tabular}
+\end{table}

@@ -1,0 +1,94 @@
+%!TEX root = ../../main.tex
+% Radar chart with per-axis min-max normalization: on each axis,
+% Full-Context maps to r=0.15R and MemCatalog maps to r=1.00R (regular octagon),
+% Prior Best falls linearly in between at r = 0.15 + 0.85*(prior-fc)/(sys-fc).
+% Raw accuracy is annotated at every vertex.
+\begin{figure}[t]
+    \centering
+    \begin{tikzpicture}[every node/.style={font=\footnotesize}]
+        \filldraw[fill=gray!35, fill opacity=0.4, draw=gray!80, thick] (0,0) rectangle (0.35,0.18);
+        \node[anchor=west] at (0.4,0.09) {Full-Context};
+        \filldraw[fill=softblue, fill opacity=0.28, draw=softblue, very thick] (2.6,0) rectangle (2.95,0.18);
+        \node[anchor=west] at (3.0,0.09) {Prior Best};
+        \filldraw[fill=dropred, fill opacity=0.32, draw=dropred, very thick] (5.0,0) rectangle (5.35,0.18);
+        \node[anchor=west] at (5.4,0.09) {\textbf{\sys{} (ours)}};
+    \end{tikzpicture}
+
+    \resizebox{0.95\columnwidth}{!}{%
+    \begin{tikzpicture}[
+        every node/.style={font=\footnotesize},
+        axis/.style={gray!45, thin},
+        grid/.style={gray!25, dashed, very thin},
+        v/.style={circle, inner sep=0pt, minimum size=3.4pt},
+        vfc/.style={v, fill=gray!85},
+        vpr/.style={v, fill=softblue},
+        vmc/.style={v, fill=dropred},
+        lblfc/.style={font=\tiny, gray!75, inner sep=0.5pt},
+        lblpr/.style={font=\tiny, softblue, inner sep=0.5pt},
+        lblmc/.style={font=\tiny\bfseries, dropred, inner sep=0.5pt},
+    ]
+        \def\R{3.4}
+        \foreach \a in {90,45,0,-45,-90,-135,180,135}
+            \draw[axis] (0,0) -- (\a:\R);
+        \foreach \r in {0.33, 0.66, 1.0}
+            \draw[grid] (90:{\r*\R}) -- (45:{\r*\R}) -- (0:{\r*\R}) -- (-45:{\r*\R})
+                       -- (-90:{\r*\R}) -- (-135:{\r*\R}) -- (180:{\r*\R}) -- (135:{\r*\R}) -- cycle;
+        \node[above=0.10cm]        at (90:\R)   {\textbf{\locomo}};
+        \node[above right=0.03cm]  at (45:\R)   {\textbf{\lmev}};
+        \node[right=0.10cm]        at (0:\R)    {\textbf{\membench}};
+        \node[below right=0.03cm]  at (-45:\R)  {\textbf{\lmeo}};
+        \node[below=0.10cm]        at (-90:\R)  {\textbf{\lmes}};
+        \node[below left=0.03cm]   at (-135:\R) {\textbf{\lmem}};
+        \node[left=0.10cm]         at (180:\R)  {\textbf{\evomem}};
+        \node[above left=0.03cm]   at (135:\R)  {\textbf{\dynamicmem}};
+        %================ Full-Context (gray): innermost octagon at 0.15R =================%
+        \filldraw[fill=gray!35, fill opacity=0.32, draw=gray!80, thick, line join=round]
+            (90:{0.15*\R})    -- (45:{0.15*\R})   -- (0:{0.15*\R})    -- (-45:{0.15*\R})
+         -- (-90:{0.15*\R})   -- (-135:{0.15*\R}) -- (180:{0.15*\R})  -- (135:{0.15*\R})
+         -- cycle;
+        %================ Prior Best (blue): per-axis interpolation =================%
+        % ratios (r_prior): LoCoMo 0.922, LMEv 0.868, MB 0.777, LMEo 0.763, LMEs 0.777, LMEm 0.751, EvoMem 0.731, DynMem 1.000
+        \filldraw[fill=softblue, fill opacity=0.24, draw=softblue, very thick, line join=round]
+            (90:{0.922*\R})   -- (45:{0.868*\R})  -- (0:{0.777*\R})   -- (-45:{0.763*\R})
+         -- (-90:{0.777*\R})  -- (-135:{0.751*\R}) -- (180:{0.731*\R}) -- (135:{1.000*\R})
+         -- cycle;
+        %================ MemCatalog (red): outermost regular octagon =================%
+        \filldraw[fill=dropred, fill opacity=0.28, draw=dropred, very thick, line join=round]
+            (90:\R)   -- (45:\R)  -- (0:\R)   -- (-45:\R)
+         -- (-90:\R)  -- (-135:\R) -- (180:\R) -- (135:\R)
+         -- cycle;
+        %================ Vertex markers + raw accuracy labels =================%
+        \node[vfc] at (90:{0.15*\R}) {}; \node[lblfc, right] at (90:{0.15*\R}) {\,52.3};
+        \node[vpr] at (90:{0.922*\R}) {}; \node[lblpr, right] at (90:{0.922*\R}) {\,58.2};
+        \node[vmc] at (90:\R) {};         \node[lblmc, left]  at (90:\R) {58.8\,};
+        \node[vfc] at (45:{0.15*\R}) {}; \node[lblfc, below right] at (45:{0.15*\R}) {4.5};
+        \node[vpr] at (45:{0.868*\R}) {}; \node[lblpr, below right] at (45:{0.868*\R}) {9.4};
+        \node[vmc] at (45:\R) {};         \node[lblmc, above left]  at (45:\R) {10.3};
+        \node[vfc] at (0:{0.15*\R}) {};  \node[lblfc, above] at (0:{0.15*\R}) {86.7};
+        \node[vpr] at (0:{0.777*\R}) {};  \node[lblpr, above] at (0:{0.777*\R}) {91.2};
+        \node[vmc] at (0:\R) {};          \node[lblmc, below] at (0:\R) {92.8};
+        \node[vfc] at (-45:{0.15*\R}) {}; \node[lblfc, above right] at (-45:{0.15*\R}) {49.3};
+        \node[vpr] at (-45:{0.763*\R}) {}; \node[lblpr, above right] at (-45:{0.763*\R}) {62.2};
+        \node[vmc] at (-45:\R) {};         \node[lblmc, below left]  at (-45:\R) {67.2};
+        \node[vfc] at (-90:{0.15*\R}) {}; \node[lblfc, right] at (-90:{0.15*\R}) {\,43.6};
+        \node[vpr] at (-90:{0.777*\R}) {}; \node[lblpr, right] at (-90:{0.777*\R}) {\,59.3};
+        \node[vmc] at (-90:\R) {};         \node[lblmc, left]  at (-90:\R) {64.9\,};
+        \node[vfc] at (-135:{0.15*\R}) {}; \node[lblfc, above left] at (-135:{0.15*\R}) {58.5};
+        \node[vpr] at (-135:{0.751*\R}) {}; \node[lblpr, above left] at (-135:{0.751*\R}) {70.3};
+        \node[vmc] at (-135:\R) {};         \node[lblmc, below right] at (-135:\R) {75.2};
+        \node[vfc] at (180:{0.15*\R}) {}; \node[lblfc, below] at (180:{0.15*\R}) {16.7};
+        \node[vpr] at (180:{0.731*\R}) {}; \node[lblpr, below] at (180:{0.731*\R}) {22.1};
+        \node[vmc] at (180:\R) {};         \node[lblmc, above] at (180:\R) {24.6};
+        \node[vfc] at (135:{0.15*\R}) {}; \node[lblfc, below left] at (135:{0.15*\R}) {33.5};
+        \node[vpr] at (135:{1.000*\R}) {}; \node[lblpr, below left] at (135:{1.000*\R}) {34.9};
+        \node[vmc] at (135:\R) {};         \node[lblmc, above right] at (135:\R) {34.9};
+    \end{tikzpicture}
+    }
+    \caption{Per-benchmark accuracy on 8 long-term memory benchmarks. Each axis uses its own linear scale: Full-Context maps to the innermost ring, \sys{} to the outermost regular octagon, and Prior Best falls at its position between them, so that within-benchmark differences among the three systems are directly visible. Raw accuracy (\%) is annotated at every vertex. The prior-best system varies per benchmark (\membench: Mem0; \lmev: LongMemEval-Fw; the remaining six: Zep), matching Table~\ref{tbl:main_results}.}
+    \Description{Radar chart over eight long-term memory benchmarks. On each
+      axis MemCatalog lies on the outermost octagon, the strongest prior memory
+      system lies between it and the Full-Context baseline on the innermost
+      ring, and the raw accuracy of all three systems is annotated at each
+      vertex.}
+    \label{fig:scoreboard}
+\end{figure}

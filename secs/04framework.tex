@@ -1,0 +1,57 @@
+%!TEX root = ../main.tex
+\section{Memory as Managed Data}
+\label{sec:framework}
+
+The framework lifts unstructured agent memory into managed data. Given a history $\mathcal{H}=\{s_i\}_{i=1}^{N}$ of natural-language sessions and a query stream $\{q_t\}_{t\geq 1}$ with $q_t=(\mathrm{Q}_t,\mathcal{C}_t,\tau_t)$, prior systems compute one retrieve-then-generate pipeline for every query, regardless of what $\mathrm{Q}_t$ actually asks. \sys{} instead factors the computation into a catalog that gives $\mathcal{H}$ a schema (Section~\ref{subsec:catalog}) and a planner that dispatches $q_t$ to one of three typed physical operators (Section~\ref{subsec:planner}). Formally,
+\begin{equation}
+\label{eq:sys}
+\hat{a}_t \;=\; \underbrace{\Omega_{c}}_{\text{Physical Operator}}\bigl(q_t,\ \underbrace{\mathrm{Cat}(\mathcal{H})}_{\text{Catalog}}\bigr),
+\qquad c = \underbrace{\rho(q_t)}_{\text{Plan Selection}},
+\end{equation}
+where $\rho$ selects a plan class $c\in\{\point,\agg,\cmp\}$ and $\Omega_c$ is the physical operator that realizes class $c$. Alice's personal assistant from Example~\ref{exam:intro} is the running illustration.
+
+\subsection{Lifting Sessions into a Typed Catalog}
+\label{subsec:catalog}
+
+Query optimization requires that the system know the shape of what it stores, which raw sessions do not reveal. This subsection builds that knowledge, describing what the catalog extracts, when it pays to extract it, and what interface the extraction exposes upward to the planner.
+
+\stitle{Typed Records.}
+The catalog $\mathrm{Cat}(\mathcal{H})$ decomposes each session $s_i$ into four typed record sets, namely \emph{entities} $\mathcal{E}$ (named actors, objects, locations), \emph{events} $\mathcal{V}$ (timestamped occurrences), \emph{relations} $\mathcal{R}\subseteq\mathcal{E}\times P\times\mathcal{E}$ (predicate-linked entity pairs), and \emph{attributes} $\mathcal{A}\subseteq\mathcal{E}\times K\times\mathrm{Val}$ (entity--key--value triples). A single session in which Alice mentions opening a mortgage contributes the entities $\{\textsf{Alice},\textsf{Raiffeisen Basel}\}$, the event $\textsf{(opened mortgage account, 2025-03-14)}$, the relation $\textsf{(Alice, has-provider, Raiffeisen Basel)}$, and the attribute $\textsf{(mortgage, rate, 2.4\%)}$. What was previously opaque text now has a schema visible to the planner.
+
+\stitle{Lazy Materialization.}
+Records are populated only on demand. When a query first touches session $s_i$, a single templated LLM call runs an extractor that returns $(\mathcal{E}_i,\mathcal{V}_i,\mathcal{R}_i,\mathcal{A}_i)$, and the result is cached. Extraction therefore runs once per session instead of once per query, and its cost is amortized over every later query that touches the same session, in the way a DBMS pays for an index once and reuses it across a workload.
+
+\stitle{Access Paths.}
+The catalog exposes two indexes to the planner. An entity index $\mathcal{I}_e$ maps each entity to its host sessions, and an attribute index $\mathcal{I}_a$ maps each attribute key to the triples $(e,v,s_i)$ that carry it. These are the only interface through which physical operators read memory, which keeps the storage layer swappable and the retrieval ranking tunable by the second-order memory (Section~\ref{sec:secondorder}).
+
+\subsection{Routing Queries to Typed Physical Operators}
+\label{subsec:planner}
+
+With the catalog in place, the remaining question is which computation a given query deserves. This subsection answers it in two steps, a selection rule that names the plan class without supervision and an operator library that realizes each class differently, and then bounds what happens when the selection rule is wrong. As Eq.~(\ref{eq:sys}) states, the planner first selects a plan class $c=\rho(q)$ and then executes the matching operator $\Omega_c$.
+
+\stitle{Zero-Supervision Plan Selection.}
+The planner $\rho:(\mathrm{Q},\mathcal{C})\to\{\point,\agg,\cmp\}$ uses only surface features $\phi_{\mathrm{surf}}=\phi_{\mathrm{surf}}(\mathrm{Q})$ (quantifier phrases, comparative or superlative markers) and choice-shape features $\phi_{\mathrm{shape}}=\phi_{\mathrm{shape}}(\mathcal{C})$ (numeric, entity, or free-text), written as
+\begin{equation}
+\label{eq:classifier}
+\rho(q) \;=\; \begin{cases}
+\agg, & \phi_{\mathrm{surf}}\in\mathrm{QuantPhr}\ \lor\ \phi_{\mathrm{shape}}=\mathrm{num}, \\
+\cmp, & \text{else if } \phi_{\mathrm{surf}}\in\mathrm{CmpPhr}, \\
+\point, & \text{otherwise.}
+\end{cases}
+\end{equation}
+The three predicates are checked in order, need no supervised labels or LLM call, and dispatch Alice's questions correctly. Here $\mathrm{QuantPhr}$ is a fixed list of quantifier phrases (\textsf{how many}, \textsf{the number of}, \textsf{count}), $\mathrm{CmpPhr}$ a fixed list of comparative and superlative markers (\textsf{more}, \textsf{longer}, \textsf{most}), and $\mathrm{num}$ the case where the choices $\mathcal{C}$ are numeric. \emph{``Who is my mortgage provider?''} contains no quantifier or comparative and falls through to \point. \emph{``How many of my events involve outdoor activity?''} matches \textsf{how many} and routes to \agg. \emph{``Which lasted longer, the Basel trip or the Zurich conference?''} pairs \textsf{longer} with \textsf{or} and routes to \cmp. This mirrors a DBMS query analyzer, which decides between an index probe, an aggregation, and a sort before generating any plan.
+
+\stitle{Robustness of Plan Selection.}
+A misselected plan class is a performance concern rather than a correctness one, for two reasons. The three operators read the same catalog through the same two indexes, so every plan class retrieves admissible evidence and returns a well-formed answer regardless of which class was selected. And \point{} is the fall-through branch of Eq.~(\ref{eq:classifier}), so a query that matches no quantifier or comparative marker is served on the cheapest admissible path instead of paying for an operator it does not need. Section~\ref{subsec:exp7routing} measures the accuracy that plan selection itself contributes.
+
+\stitle{Physical Operator Library.}
+Each plan class binds an access path to a fixed reasoning template, stated compactly as
+\begin{align*}
+\Omega_{\point}(q) &\;=\; \mathrm{LLM}\bigl(\mathrm{template}_{\point}(\mathcal{I}_a[k_q])\bigr), \\
+\Omega_{\agg}(q)   &\;=\; \bigl|\{\,e\in \mathcal{I}_e[T_q]\ :\ \mathrm{LLM}(\mathrm{pred}_q,e)=\texttt{yes}\}\bigr|, \\
+\Omega_{\cmp}(q)   &\;=\; \argmax_{e\in\{e_1,e_2\}}\ \mathcal{I}_a[k_q](e).
+\end{align*}
+\opPOINT{} probes $\mathcal{I}_a$ for the requested key $k_q$ and returns the value directly, an index scan. \opAGG{} enumerates candidate entities of the referenced type $T_q$ from $\mathcal{I}_e$, marks each against the predicate with a bounded \texttt{yes}/\texttt{no} judgment, and emits an integer count. On the outdoor question it lists Alice's eight events, tags them, and emits \texttt{Answer: 3}. This is a hash-aggregate that makes the count explicit instead of leaving it implicit inside free-form generation. \opCMP{} extracts the compared key $k_q$ (here, \textsf{duration}) for the two candidates from $\mathcal{I}_a$ and materializes both side by side, turning a long-context alignment problem into a two-value sort-merge.
+
+\stitle{Remarks.}
+The three components compose into the standard DBMS triple. The catalog supplies statistics and access paths, the planner selects a plan, and the operator library executes it. Prior memory systems provide a storage layer and sometimes an index, but every query, whether a single-fact lookup or a cross-entity count, still follows one generic retrieve-then-generate pipeline. Making the plan class $c=\rho(q)$ in Eq.~(\ref{eq:classifier}) explicit is the precondition for the two optimization layers that follow. The second-order memory tunes the indexes $\mathcal{I}_e,\mathcal{I}_a$ that a plan reads (Section~\ref{sec:secondorder}), and the executor prices each plan class differently (Section~\ref{sec:executor}). Neither layer is expressible without an explicit plan class.

@@ -1,0 +1,33 @@
+%!TEX root = ../main.tex
+\begin{table}[t]
+    \centering
+    \small
+    \caption{Accuracy against the position of a query in a user's own sequence,
+      evaluated on users with $\geq 10$ queries so that all four buckets are
+      populated. Only \sys{} improves as a user keeps asking. On \dynamicmem{}
+      it starts below the static rankers in the first bucket, where its
+      workload log is still empty, and overtakes them once the log carries
+      signal. Absolute levels differ from Table~\ref{tbl:main_results}, which
+      averages over all users.}
+    \label{tbl:second_order_learning}
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \multirow{2}{*}{\textbf{Method}}
+            & \multicolumn{4}{c}{\textbf{Query position for one user}} \\
+        \cmidrule(l){2-5}
+            & 1--3 & 4--6 & 7--9 & 10+ \\
+        \midrule
+        \tblgroup{5}{\evomem} \\
+        Full-Context                   & 16.7 & 17.0 & 16.8 & 16.5 \\
+        Mem0~\cite{mem0}               & 20.1 & 20.5 & 20.4 & 20.2 \\
+        Zep~\cite{zep}                 & \second{21.8} & \second{22.2} & \second{22.1} & \second{22.0} \\
+        \textbf{\sys{}}                & \best{22.2} & \best{24.4} & \best{26.1} & \best{27.8} \\
+        \addlinespace[2pt]
+        \tblgroup{5}{\dynamicmem} \\
+        Full-Context                   & 28.7 & 28.8 & 28.6 & 28.4 \\
+        Mem0~\cite{mem0}               & \second{29.4} & 29.8 & 29.6 & 29.3 \\
+        Zep~\cite{zep}                 & \best{29.9} & \second{30.0} & \second{29.9} & \second{29.8} \\
+        \textbf{\sys{}}                & 29.1 & \best{30.3} & \best{31.7} & \best{32.8} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
