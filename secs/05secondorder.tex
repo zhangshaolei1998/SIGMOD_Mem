@@ -4,7 +4,7 @@
 
 The framework of Section~\ref{sec:framework} evaluates each query in isolation. The hundredth query for a user is therefore served in the same way as the first. Prior memory systems share this limitation. They observe only the \emph{write path}, which sessions arrived, and never the \emph{read path}, which stored records answered which queries. \sys{} closes this loop with a per-user workload log $\mathcal{W}_u$ (Section~\ref{subsec:log}) and a feedback rule that reshapes the catalog's physical organization (Section~\ref{subsec:feedback}).
 
-\subsection{Recording the Read Path}
+\subsection{Read-Path Logging}
 \label{subsec:log}
 
 Adapting storage to a user presupposes a record of what that user's queries actually consumed. Prior systems never keep that record. This subsection specifies what \sys{} logs, and it keeps the log small enough that logging does not itself become a scaling problem. For each user $u$, \sys{} maintains a compact log of query outcomes
@@ -16,13 +16,13 @@ where $E_t^{+}\subseteq\mathcal{E}$ is the set of catalog entities that appeared
 \stitle{Per-Entity Statistics.}
 The log is statistical, not verbatim. For each catalog entity $e$ we keep three running numbers only, an issue count $n(e)=|\{t\leq T: e\in q_t\}|$ (how often $e$ has been mentioned by any query), an answer-hit count $h(e)=|\{t\leq T: e\in E_t^{+}\}|$ (how often $e$ appeared in an accepted answer), and a last-hit time $\tau^{\star}(e)=\max\{\tau_t: e\in E_t^{+}\}$. Storage is therefore $O(|\mathcal{E}|)$ per user and independent of query volume $T$. A DBMS keeps histograms and access counters instead of a replay log of every statement, for the same reason, since the optimizer needs the workload's distribution and not its transcript.
 
-\stitle{What Counts as an Accepted Answer.}
+\stitle{Answer Acceptance Criterion.}
 No gold labels exist at deployment time, and acceptance must therefore be defined operationally. \sys{} marks an answer accepted when the executor commits to it under Eq.~(\ref{eq:short}), which happens when two independent samples agree, and records only the entities the operator read in producing it. The score moves a ranking and never a decision, and a promoted entity changes which records the operator sees first, never what it computes or may return. The loop is a retrieval prior, not a cache of asserted facts.
 
 \stitle{Per-User Isolation.}
 $\mathcal{W}_u$ and every quantity derived from it are strictly per-user, with no cross-user aggregation. A new user starts from a neutral prior and adapts as queries arrive.
 
-\subsection{Reshaping Storage from Observed Workload}
+\subsection{Workload-Driven Storage Adaptation}
 \label{subsec:feedback}
 
 A log is useful only if something reads it. This subsection turns the log into a single per-entity score and then spends that score on three decisions about where memory physically sits, leaving query semantics untouched throughout.

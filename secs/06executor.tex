@@ -14,12 +14,12 @@ A Uniform-$K{=}3$ reference sets $K_{\point}=K_{\agg}=K_{\cmp}=3$, so $C=3Q$.
 
 The executor makes this budget an explicit, plan-aware decision, exploiting two independent sources of waste. One is the class of queries saturated at a single call (Section~\ref{subsec:budget}). The other is the individual query whose answer is stable before its budget is spent (Section~\ref{subsec:shortcircuit}). The two act on disjoint slices, and their savings compose.
 
-\subsection{Budgeting Calls by Plan Class}
+\subsection{Plan-Class Budgeting}
 \label{subsec:budget}
 
 The first source of waste is structural, since one class of query never benefits from the samples it is given. This subsection assigns a budget per class and derives what that assignment saves as a function of workload composition. The executor pre-declares a per-class budget instead of a per-query one, setting $K_{\point}=1$ and $K_{\agg}=K_{\cmp}=3$. The asymmetry follows from what each plan computes, not from a heuristic. A \point{} query resolves a single stored fact. Once $\textsf{(Alice, has-provider, Raiffeisen Basel)}$ is in the grounding block, replicated sampling can only re-read it, and a single call is both necessary and sufficient. \agg{} and \cmp{} queries compose evidence across multiple records, as when the outdoor count must decide eight independent \texttt{yes}/\texttt{no} judgments, and there sampling genuinely reduces variance, so these classes keep the full budget. Substituting these budgets into Eq.~(\ref{eq:cost}), the saving against Uniform-$K{=}3$ is $\Delta C=2p_{\point}Q$. On \membench{} with $p_{\point}=0.61$, this alone reduces $C$ from $900$ to $532$, a $40.9\%$ cut. The saving grows with the share of point queries and costs nothing in accuracy on exactly the queries it economizes, in line with the DBMS discipline of pricing an operator by what it must compute and not by a uniform per-tuple rate.
 
-\subsection{Short-Circuiting on Probe Agreement}
+\subsection{Stability Short-Circuit}
 \label{subsec:shortcircuit}
 
 The second source of waste lies inside the hard classes, where some instances are easy but indistinguishable from the rest before execution. This subsection recovers that distinction at no extra cost by reading the agreement between samples the system was going to draw anyway. Within the \agg/\cmp{} budget, the executor decides adaptively whether the third call is worth making. It draws two independent samples $p_1,p_2$ under the operator's template, measures their token-level agreement $\mathrm{agree}(\cdot,\cdot)\in[0,1]$ against a threshold $\theta$, and draws a third sample $p_3$ only when the two disagree, giving the rule

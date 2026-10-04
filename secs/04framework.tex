@@ -10,7 +10,7 @@ The framework lifts unstructured agent memory into managed data. Given a history
 \end{equation}
 where $\rho$ selects a plan class $c\in\{\point,\agg,\cmp\}$ and $\Omega_c$ is the physical operator that realizes class $c$. Alice's personal assistant from Example~\ref{exam:intro} is the running illustration.
 
-\subsection{Lifting Sessions into a Typed Catalog}
+\subsection{Typed Catalog}
 \label{subsec:catalog}
 
 Query optimization requires that the system know the shape of what it stores, which raw sessions do not reveal. This subsection builds that knowledge, describing what the catalog extracts, when it pays to extract it, and what interface the extraction exposes upward to the planner.
@@ -24,7 +24,7 @@ Records are populated only on demand. When a query first touches session $s_i$, 
 \stitle{Access Paths.}
 The catalog exposes two indexes to the planner. An entity index $\mathcal{I}_e$ maps each entity to its host sessions, and an attribute index $\mathcal{I}_a$ maps each attribute key to the triples $(e,v,s_i)$ that carry it. These are the only interface through which physical operators read memory, which keeps the storage layer swappable and the retrieval ranking tunable by the second-order memory (Section~\ref{sec:secondorder}).
 
-\subsection{Routing Queries to Typed Physical Operators}
+\subsection{Plan Selection and Physical Operators}
 \label{subsec:planner}
 
 With the catalog in place, the remaining question is which computation a given query deserves. This subsection answers it in two steps, a selection rule that names the plan class without supervision and an operator library that realizes each class differently, and then bounds what happens when the selection rule is wrong. As Eq.~(\ref{eq:sys}) states, the planner first selects a plan class $c=\rho(q)$ and then executes the matching operator $\Omega_c$.

@@ -39,7 +39,7 @@ The two state-inference benchmarks separate the systems least in absolute terms,
 
 \finding{\sys{} matches or improves the strongest prior system on all eight benchmarks, and the margin is largest where a single retrieval pass is least sufficient, on long histories and on repeated questions from one user.}
 
-\subsection{Exp-2. Larger Gains on Weaker Backbones}
+\subsection{Exp-2. Backbone Generalization}
 \label{subsec:exp2}
 
 A system that supplies external structure should benefit every backbone, and the benefit should be largest where the backbone's own capacity is most limited. To test this, we hold \membench{} and the full \sys{} configuration fixed and vary only the backbone, over four closed-source and four open-source models spanning a wide capability range. Table~\ref{tbl:main_results_open} collects the comparison.
@@ -50,7 +50,7 @@ A system that supplies external structure should benefit every backbone, and the
 
 \finding{The advantage of \sys{} is not backbone-specific, and it grows as backbone capability falls, with external memory structure substituting for internal model capacity.}
 
-\subsection{Exp-3. Gains Concentrate on Aggregation and Comparison}
+\subsection{Exp-3. Per-Class Accuracy Decomposition}
 \label{subsec:exp3}
 
 \input{tables/perclass}
@@ -76,7 +76,7 @@ To make the two failure modes concrete, Table~\ref{tbl:casestudy} traces one agg
 \input{tables/cost_breakdown}
 \input{figures/tex/pareto}
 
-\subsection{Exp-4. Lower Cost at Higher Accuracy}
+\subsection{Exp-4. Cost Analysis}
 \label{subsec:exp4}
 
 Accuracy bought with extra LLM calls is not an architectural result. To separate the two, we measure the LLM calls each system issues per query on \membench{} and place cost and accuracy on the same axes. Cost is counted on the read path for every system, so a system that spends a retrieval or rewriting call before generating is charged for it. Write-path extraction is a one-time per-session cost that every structured system amortizes over the queries touching that session, including the lazy materialization of \sys{}, and it is excluded uniformly rather than charged to one group. We additionally include two reference configurations that fix the sampling budget uniformly at one call and at three calls per query, which isolates the effect of \emph{allocating} a budget from the effect of its \emph{size}.
@@ -89,7 +89,7 @@ Table~\ref{tbl:cost} separates the two mechanisms behind this position. Plan-cla
 
 \input{tables/ablation}
 
-\subsection{Exp-5. Three Layers, Three Complementary Contributions}
+\subsection{Exp-5. Ablation Study}
 \label{subsec:exp5}
 
 The three layers of \sys{} were motivated by three different obstacles. This experiment confirms that each layer contributes independently by removing one component at a time and measuring both accuracy and cost on \membench{} and \lmev{}, a multiple-choice benchmark and a free-form one. Table~\ref{tbl:ablation} collects the ablations.
@@ -100,7 +100,7 @@ Each layer contributes on a distinct axis, confirming they are complementary. Re
 
 \input{tables/second_order_learning}
 
-\subsection{Exp-6. Accuracy That Grows With a User's History}
+\subsection{Exp-6. Accuracy by Query Position}
 \label{subsec:exp6}
 
 The second-order memory predicts a specific and falsifiable behavior. Accuracy on one user should rise as that user asks more questions, and no system without a read-path feedback loop should show the same rise. To test this we restrict to users with at least ten queries, so that all four position buckets are populated, condition on the position of a query within its own user's sequence, and report accuracy per position bucket, holding backbone, prompt, and benchmark fixed so that position is the only variable. Table~\ref{tbl:second_order_learning} bins the accuracy by position. Because the evaluation population is a subset of the full test set, the absolute accuracy levels in each column differ from Table~\ref{tbl:main_results}; the within-table ranking and the monotone trend are the subject of this experiment.
@@ -111,7 +111,7 @@ The improvement cannot be attributed to the model or the prompt, both of which a
 
 \finding{Only \sys{} improves as a user continues asking, which isolates read-path feedback as the mechanism and shows that prior systems are structurally unable to exhibit this behavior.}
 
-\subsection{Exp-7. Classification Quality and Parameter Stability}
+\subsection{Exp-7. Planner Accuracy and Parameter Stability}
 \label{subsec:exp7routing}
 
 \input{tables/routing}
@@ -122,7 +122,7 @@ Three observations follow from the table. First, the surface-rule planner reache
 
 \finding{The surface-rule planner reaches $91.4\%$ classification accuracy at zero cost, an LLM planner cannot convert better classification into materially better answers, and end-to-end accuracy is stable across wide parameter intervals.}
 
-\subsection{Exp-8. Cost Independent of History Length}
+\subsection{Exp-8. Scalability Analysis}
 \label{subsec:exp8}
 
 \input{tables/scaling}

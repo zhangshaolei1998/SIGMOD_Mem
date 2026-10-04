@@ -24,7 +24,7 @@ Given a stream of queries $q_1,q_2,\dots$ over an evolving $\mathcal{H}$, an \em
 \end{enumerate}
 Prior memory systems have focused overwhelmingly on \textbf{(O1)}~\cite{mem0,zep,memgpt,longmemeval}: their headline results report accuracy on a single test query per user, with cost and per-user adaptation treated implicitly or not at all. \sys{} treats \textbf{(O2)} and \textbf{(O3)} as first-class objectives on par with \textbf{(O1)}, and enforces each by a dedicated architectural layer, the executor for cost (Section~\ref{sec:executor}) and the second-order memory for per-user improvement (Section~\ref{sec:secondorder}).
 
-\subsection{How an LLM Agent Uses Memory}
+\subsection{Memory Operations in LLM Agents}
 \label{subsec:prelim-flow}
 
 Regardless of the particular memory system, an LLM agent processes each user interaction along two coupled paths. A \emph{write path} updates the memory store when a new session closes, and a \emph{read path} answers a query using the accumulated store. Both paths spend LLM calls, and both are what \sys{} instruments.
