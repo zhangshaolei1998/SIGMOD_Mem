@@ -2,27 +2,35 @@
 \section{Cost-Aware Execution}
 \label{sec:executor}
 
-A memory system that answers well but spends unboundedly does not scale to long histories and heavy usage. This section prices what \sys{} spends and then shows how to spend less of it without giving up accuracy.
+A memory system that answers well but spends unboundedly does not scale to long histories and heavy usage. To control this cost while preserving accuracy, \sys{} introduces a cost-aware executor that exploits the query patterns identified by the planner.
 
-\stitle{Accounting.}
-\sys{} issues LLM calls on both the write path (catalog extraction) and the read path (query reasoning). Write-path cost is paid once per session and amortizes across queries. The rest of this section concerns read-path cost, which dominates. The standard remedy for accuracy, self-consistency at $K{=}3$~\cite{sc}, triples that cost on \emph{every} query, regardless of whether the extra samples change the answer. Formally, the total cost over a workload of $Q$ queries with class fractions $(p_{\point},p_{\agg},p_{\cmp})$ under fixed budgets $(K_{\point},K_{\agg},K_{\cmp})$ is
+The reason is that different query patterns have different cost profiles. A simple fact lookup (\point{}) retrieves one stored value and never benefits from repeated sampling, while an aggregation (\agg{}) or comparison (\cmp{}) over multiple records genuinely reduces variance with additional samples. Treating all queries the same, as uniform self-consistency does, wastes budget on easy queries and cannot reallocate it to hard ones.
+
+The executor addresses this through two complementary mechanisms: it allocates different budgets to different query patterns (Section~\ref{subsec:budget}), and it stops spending early when an individual query's answer is already stable (Section~\ref{subsec:shortcircuit}). The two act on different dimensions and their savings compose.
+
+\stitle{Cost Model.}
+\sys{} issues LLM calls on both the write path (catalog extraction) and the read path (query answering). Write-path cost is paid once per session and amortizes across queries. The executor targets read-path cost, which dominates. Under fixed per-pattern budgets $(K_{\point},K_{\agg},K_{\cmp})$, the total cost over a workload of $Q$ queries with pattern fractions $(p_{\point},p_{\agg},p_{\cmp})$ is
 \begin{equation}
 \label{eq:cost}
 C \;=\; Q\cdot\bigl(p_{\point}K_{\point} + p_{\agg}K_{\agg} + p_{\cmp}K_{\cmp}\bigr).
 \end{equation}
 A Uniform-$K{=}3$ reference sets $K_{\point}=K_{\agg}=K_{\cmp}=3$, so $C=3Q$.
 
-The executor makes this budget an explicit, plan-aware decision, exploiting two independent sources of waste. One is the class of queries saturated at a single call (Section~\ref{subsec:budget}). The other is the individual query whose answer is stable before its budget is spent (Section~\ref{subsec:shortcircuit}). The two act on disjoint slices, and their savings compose.
-
-\subsection{Plan-Class Budgeting}
+\subsection{Pattern-Aware Budgeting}
 \label{subsec:budget}
 
-The first source of waste is structural, since one class of query never benefits from the samples it is given. This subsection assigns a budget per class and derives what that assignment saves as a function of workload composition. The executor pre-declares a per-class budget instead of a per-query one, setting $K_{\point}=1$ and $K_{\agg}=K_{\cmp}=3$. The asymmetry follows from what each plan computes, not from a heuristic. A \point{} query resolves a single stored fact. Once $\textsf{(Alice, has-provider, Raiffeisen Basel)}$ is in the grounding block, replicated sampling can only re-read it, and a single call is both necessary and sufficient. \agg{} and \cmp{} queries compose evidence across multiple records, as when the outdoor count must decide eight independent \texttt{yes}/\texttt{no} judgments, and there sampling genuinely reduces variance, so these classes keep the full budget. Substituting these budgets into Eq.~(\ref{eq:cost}), the saving against Uniform-$K{=}3$ is $\Delta C=2p_{\point}Q$. On \membench{} with $p_{\point}=0.61$, this alone reduces $C$ from $900$ to $532$, a $40.9\%$ cut. The saving grows with the share of point queries and costs nothing in accuracy on exactly the queries it economizes, in line with the DBMS discipline of pricing an operator by what it must compute and not by a uniform per-tuple rate.
+To avoid wasting LLM calls on queries that do not benefit from replication, the executor assigns a budget based on the query pattern, giving each pattern the budget its operator can use productively.
 
-\subsection{Stability Short-Circuit}
+Specifically, the executor sets $K_{\point}=1$ and $K_{\agg}=K_{\cmp}=3$. The asymmetry follows from what each operator computes. A \point{} query resolves a single stored fact: once $\textsf{(Alice, has-provider, Raiffeisen Basel)}$ is in the context, re-sampling can only re-read the same value, and one call is both necessary and sufficient. \agg{} and \cmp{} queries compose evidence across multiple records, as when the outdoor count must decide eight independent \texttt{yes}/\texttt{no} judgments, and there sampling genuinely reduces variance, so these patterns retain the full budget.
+
+Substituting these budgets into Eq.~(\ref{eq:cost}), the saving against Uniform-$K{=}3$ is $\Delta C=2p_{\point}Q$. On \membench{} with $p_{\point}=0.61$, this alone reduces $C$ from $900$ to $532$, a $40.9\%$ cut. The saving grows with the share of point queries and costs nothing in accuracy on the queries it economizes.
+
+\subsection{Agreement-Based Early Stopping}
 \label{subsec:shortcircuit}
 
-The second source of waste lies inside the hard classes, where some instances are easy but indistinguishable from the rest before execution. This subsection recovers that distinction at no extra cost by reading the agreement between samples the system was going to draw anyway. Within the \agg/\cmp{} budget, the executor decides adaptively whether the third call is worth making. It draws two independent samples $p_1,p_2$ under the operator's template, measures their token-level agreement $\mathrm{agree}(\cdot,\cdot)\in[0,1]$ against a threshold $\theta$, and draws a third sample $p_3$ only when the two disagree, giving the rule
+To further reduce cost on the harder query patterns, the executor detects when additional sampling is unnecessary for a specific query. Some \agg{} and \cmp{} instances are easy but indistinguishable from hard ones before execution. The executor recovers this distinction at no extra cost by reading the agreement between samples it was going to draw anyway.
+
+Specifically, within the \agg/\cmp{} budget, the executor draws two independent samples $p_1,p_2$ and measures their token F1 $\mathrm{agree}(\cdot,\cdot)\in[0,1]$. If the two samples agree above a threshold $\theta$, the query is considered settled and no third sample is drawn:
 \begin{equation}
 \label{eq:short}
 \hat{a} \;=\; \begin{cases}
@@ -30,7 +38,9 @@ p_1, & \mathrm{agree}(p_1,p_2)\geq\theta, \\
 \mathrm{Majority}(p_1,p_2,p_3), & \text{otherwise.}
 \end{cases}
 \end{equation}
-Under Eq.~(\ref{eq:short}) on Alice's outdoor question, both samples enumerate the same eight events and emit \texttt{Answer: 3}, so the agreement is high, the third call is skipped, and the query costs two. Had one sample returned \texttt{3} and the other \texttt{4}, the low agreement would have triggered escalation, spending the third call where it can change the outcome. We fix $\theta=0.6$ for all benchmarks and all backbones, and it is never retuned per dataset. Combined with plan-class budgeting, agreement-based stopping drives the total cost on \membench{} from $532$ to $444$, a further $16.5\%$ cut and $50.7\%$ overall against the Uniform-$K{=}3$ reference.
+On Alice's outdoor query, both samples enumerate the same eight events and emit \texttt{Answer: 3}, so the agreement is high, the third call is skipped, and the query costs two calls, saving the third. Had one sample returned \texttt{3} and the other \texttt{4}, the low agreement would have triggered the third call, spending it where it can change the outcome. We fix $\theta=0.6$ for all benchmarks and all backbones.
 
-\stitle{Agreement as a Cost Signal.}
-The reinterpretation here is the contribution. Self-consistency~\cite{sc} samples $K$ reasoning paths and votes, treating disagreement as \emph{noise to average away} under a sampling budget fixed in advance. \sys{} reads the same disagreement as \emph{information about the query}. When two samples agree, the query is easy for the current model and grounding, and a third sample is unlikely to change the outcome. Agreement thus becomes a stopping rule, not a voting mechanism. Adaptive-Consistency~\cite{adaptiveconsistency} and early-stopping self-consistency~\cite{escsc} both halt sampling once drawn answers converge, but they operate on a single query in isolation and must draw at least two samples before learning anything. \sys{} knows from Eq.~(\ref{eq:classifier}) that a point lookup cannot benefit from a second sample at all, and it skips the extra sample entirely for the majority of the workload. Agreement-based stopping and class-based budgeting are therefore complementary, the first acting within a class and the second across classes, and Section~\ref{subsec:exp4} measures them separately.
+Combined with pattern-aware budgeting, early stopping drives the total cost on \membench{} from $532$ to $444$, a further $16.5\%$ cut and $50.7\%$ overall against the Uniform-$K{=}3$ reference.
+
+\stitle{Remarks.}
+The contribution is the reinterpretation of agreement. Self-consistency~\cite{sc} samples $K$ reasoning paths and votes, treating disagreement as \emph{noise to average away} under a fixed budget. \sys{} reads the same disagreement as \emph{information about the query}: when two samples agree, the query is easy for the current model and grounding, and a third sample is unlikely to change the outcome. Agreement thus becomes a stopping rule that saves calls when they are unlikely to change the outcome. Adaptive-Consistency~\cite{adaptiveconsistency} and early-stopping self-consistency~\cite{escsc} both halt sampling once drawn answers converge, but they operate on a single query in isolation and must draw at least two samples before learning anything. \sys{} knows from the query pattern that a point lookup cannot benefit from a second sample at all, and skips the extra sample entirely for the majority of the workload. Pattern-aware budgeting and agreement-based stopping are therefore complementary: the first acts across patterns and the second within a pattern. Section~\ref{subsec:exp4} measures them separately.

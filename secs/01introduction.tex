@@ -4,45 +4,65 @@
 
 \input{figures/tex/introduction_example}
 
-LLM agents now hold conversations that span weeks, and the interaction history of a single user grows to hundreds of thousands of tokens, in some deployments to millions~\cite{mem0,memgpt,zep}. Answering a question against that history is the core function of a personal agent, and it is also the function that current systems serve least well. The obstacle is not the cost of storing the history but the absence of any declared structure over it, since the history arrives as free-form natural language. A system therefore cannot tell a single-fact lookup apart from a count over scattered evidence, and cannot treat them differently. Every read becomes the same operation, a similarity scan over an opaque token stream followed by one generation call. The system never knows what a query is asking, what the same user has asked before, or what an answer ought to cost. Agent memory today is stored but not managed. Figure~\ref{fig:motivating} contrasts this behavior with \sys{} on a two-query interaction, and Figure~\ref{fig:scoreboard} previews the accuracy \sys{} reaches across eight long-term memory benchmarks.
+Memory is the foundation of a personal LLM agent. It allows the agent to remember a user's preferences, track promises and plans across conversations, and answer questions about the past. As agents are deployed in more settings, from personal assistants to customer service bots, the interaction history they accumulate grows rapidly, reaching hundreds of thousands of tokens per user, and in some deployments exceeding a million~\cite{mem0,memgpt,zep}. This growing volume makes it increasingly difficult to find the right information at the right time, and requires a systematic way to \emph{manage} agent memory.
 
-\stitle{State-of-the-Art Approaches and Their Limits.}
-Three lines of work attack this problem. Each improves how memory is written and leaves untouched how it is read, which is where a query is actually served. \emph{Long-context prompting} and \emph{RAG variants}~\cite{longcontext,rag} push raw history into the prompt or retrieve top-$k$ chunks by dense similarity. A point lookup and a cross-entity count then follow an identical retrieval-and-generation pipeline. \emph{Hierarchical memory systems} such as MemGPT~\cite{memgpt} page facts between context tiers, which decides \emph{where} a fact lives but not \emph{how} to compute over facts of different logical shapes. \emph{Structured memory systems} such as Mem0~\cite{mem0} and Zep~\cite{zep} invest heavily in write-time entity and graph extraction, yet both fall back to one dense-retrieval strategy at read time, and neither records which stored memories actually produced correct answers for a given user. The three lines differ in representation but share a common shape. Prior systems supply a storage layer and sometimes an access path, but no planner that distinguishes plan classes, no operator library that computes each class differently, and no cost model that prices an answer before paying for it.
+Yet today's memory systems do not manage this data. They store it, in the form of raw sessions, extracted facts, or graph edges, but every query is answered through the same pipeline: retrieve relevant passages, then generate an answer, regardless of what the query asks. No existing system distinguishes whether a query needs a simple fact lookup, an enumeration of multiple records, or a comparison across entries. And no system learns from past interactions which stored memories are more useful than others. As illustrated in Figure~\ref{fig:motivating}, this lack of management leads to two concrete limitations.
 
-The database community closed analogous gaps four decades ago by lifting flat files into \emph{managed data}, where schemas expose record shape, optimizers select physical plans over a declared algebra, and cost models allocate execution resources~\cite{selinger1979,graefe1993}. Recent systems carry that abstraction into LLM analytics over typed tables~\cite{lotus}, but the line stops where the data stops being typed. Agent memory is unstructured, its schema is latent in natural language, and its queries are user questions instead of SQL. No existing system transfers the optimization stack to memory itself.
+\stitle{Two Limitations of Current Systems.}
+%
+\begin{itemize}[leftmargin=*]
+\item \textbf{Inaccurate on complex queries.}
+Because every query goes through the same pipeline, systems handle simple fact lookups well but fail systematically on harder queries. For example, when a user asks \emph{``How many of my events involve outdoor activity?''}, the model must enumerate candidates across multiple sessions and judge each one, a task that one retrieve-and-generate call cannot handle. Current systems, from long-context prompting~\cite{longcontext} and RAG~\cite{rag} to MemGPT~\cite{memgpt}, Mem0~\cite{mem0}, and Zep~\cite{zep}, all feed retrieved text into one LLM call and leave the model to count or compare on its own, which it often fails to do~\cite{ruler}.
 
-\stitle{Challenges.}
-Carrying the stack across that gap raises three obstacles. In each case a direct remedy exists and fails for a concrete reason.
+\item \textbf{Wasteful and static.}
+Because no system records which memories actually contributed to correct answers, every query starts from scratch, as if the user had never asked anything before. Because no system has a cost model, every query receives the same computational budget. A simple fact lookup that could be answered in one call is given the same number of LLM calls as a complex aggregation that benefits from multiple samples. The result is wasted cost on easy queries and no improvement over time on hard ones.
+\end{itemize}
 
-\etitle{C1. Recovering a Plan Space without a Schema or Labels.}
-Query optimization presupposes that the system can name the shape of a query, but agent memory offers neither a relational schema to plan against nor labeled examples to learn a planner from. Asking the LLM to tag each query would work, yet it spends an extra call on every question and turns the plan itself into a sampled variable, which is an undesirable property for a component every downstream decision depends on. Training a supervised planner is unavailable because no benchmark ships query-type labels.
+Both limitations stem from the same root cause: agent memory is treated as a flat store with no management layer. The database community addressed the same problems decades ago by introducing schemas, query planners, and cost models~\cite{selinger1979,graefe1993}. No existing agent memory system provides any of these.
 
-\etitle{C2. Learning a User without Gold Supervision.}
-A memory system should get better at a specific user as that user keeps asking, but nothing in the deployment reveals which stored records deserve priority. Loading every historical entity into the prompt exceeds the context window after a few sessions. Ranking by recency is available without any supervision, yet it ranks by the wrong quantity, because an entity a user returns to across months is old precisely because the relationship is long-standing. The signal that does matter, which records participate in correct answers, lies on the read path, and prior systems instrument only the write path.
+\stitle{Three Challenges for Memory Management.}
+Treating agent memory as managed data raises three challenges.
+%
+\begin{itemize}[leftmargin=*]
+\item \textbf{Architecture: what to store and how to answer.}
+Agent memory is unstructured natural language. To manage it, the system needs to impose structure on the stored data, recognize different types of queries, and route each to specialized logic, ideally without spending an extra LLM call.
 
-\etitle{C3. Paying for Reasoning in Proportion to Difficulty.}
-Replicated sampling buys accuracy on hard questions and wastes it on easy ones, yet difficulty is not observable before the answer exists. Lowering the budget uniformly sacrifices the queries that needed it, and an LLM-based difficulty predictor reintroduces the per-query call the budget was meant to save.
+\item \textbf{Performance: how to improve over time.}
+A good memory system should get better as it serves more queries for the same user, just as a database improves its indexes as it collects workload statistics. This requires a feedback loop that records which stored entries helped answer past queries and uses this signal to reorganize storage, a mechanism that no existing agent memory system implements. The difficulty is that no ground-truth answers are available at deployment time, so the system must define ``useful'' without external supervision.
+
+\item \textbf{Efficiency: how to control cost.}
+An LLM call is the dominant cost unit, and drawing multiple independent answers to the same query (Self-Consistency~\cite{sc}) multiplies it. A system that spends the same budget on every query wastes calls on easy queries that do not need them, and cannot reallocate to hard queries that do. The system needs a cost model that assigns different budgets to different query types and stops spending when additional calls cannot change the outcome.
+\end{itemize}
 
 \stitle{Our Proposal.}
-We present \sys{}, a memory management system that answers all three obstacles with one move, by giving agent memory the storage, planning, and execution separation of a DBMS. Three mechanisms follow from that separation.
+To address these challenges, we propose \sys{}, a memory management system for LLM agents that treats agent memory as managed data. As shown in Figure~\ref{fig:framework_overview}, \sys{} consists of a foundational framework and two optimization layers.
 
-\etitle{A Typed Catalog with Zero-Supervision Plan Selection.}
-\sys{} lifts sessions into a catalog of entities, events, relations, and attributes, materialized lazily on first access, and routes each question to one of three physical plans using only surface form, the quantifier and comparative markers in the question and the shape of the answer choices. The planner costs no LLM call and needs no labels, which resolves C1. Three operators then execute the chosen plan over the catalog indexes. A count enumerates and tallies where a comparison extracts and sorts, instead of both being handed to one generic prompt.
+\begin{itemize}[leftmargin=*]
+\item \textbf{Foundation: Typed Catalog, Query Classification, and Operators} (Section~\ref{sec:framework}). To address the architecture challenge, \sys{} organizes raw sessions into a typed catalog of entities, events, relations, and attributes. A lightweight planner recognizes three query patterns, \point{} (fact lookup), \agg{} (aggregation), and \cmp{} (comparison), by matching keywords in the query, with no LLM call. Each pattern is handled by a specialized operator that defines a fixed sequence of steps for answering the query.
 
-\etitle{Second-Order Memory over the Read Path.}
-\sys{} records, per user, which plan classes have been issued and which catalog entities appeared in accepted answers, then folds that record back into index priority and grounding-block composition. The system observes the read path that prior work discards, which resolves C2, and it transfers workload-driven index recommendation~\cite{chaudhuri1997autotuning} from self-tuning databases to agent memory.
+\item \textbf{Second-Order Memory} (Section~\ref{sec:secondorder}). To address the performance challenge, \sys{} logs which catalog entries appeared in answers that two independent samples agreed on, and ranks those entries higher for subsequent queries. This is a workload feedback loop, analogous to self-tuning indexes in classical databases~\cite{chaudhuri1997autotuning}, applied to agent memory for the first time.
 
-\etitle{Agreement as a Cost Signal.}
-\sys{} assigns a call budget per plan class and then truncates it adaptively by comparing two independent samples. Reading sample agreement as a stopping signal is known~\cite{adaptiveconsistency,escsc}, but it is applied to one query at a time and therefore cannot avoid the first two samples. \sys{} determines from the plan class alone that a point lookup will not benefit from a second sample, and it therefore allocates across classes before adapting within one, which resolves C3.
+\item \textbf{Cost-Aware Executor} (Section~\ref{sec:executor}). To address the efficiency challenge, \sys{} assigns different LLM call budgets to different query patterns: one call for simple lookups, up to three for hard aggregation or comparison queries. It further stops early when two samples already agree, using agreement as a signal that additional calls are unnecessary.
+\end{itemize}
 
 \begin{example}
 \label{exam:intro}
-Alice asks her agent \emph{``How many of my events involve outdoor activity?''} after six earlier questions in the same session. A Full-Context baseline scans the whole history and answers 5, miscounting evidence scattered across sessions, where the correct answer is 3. A graph memory retrieves six outdoor-related nodes but never resolves the outdoor predicate, and the model guesses 4. \sys{} routes the question to its aggregation plan, surfaces the event entities that the six earlier questions already marked as relevant, enumerates each candidate with an explicit yes-or-no decision, and answers 3. The two samples it draws agree, and it stops after two calls. Each of the three failure modes above is removed by a different one of the three mechanisms. Table~\ref{tbl:casestudy} gives the full trace.
+Alice asks her agent \emph{``How many of my events involve outdoor activity?''} after six earlier questions. A full-context baseline scans the whole history and answers 5, miscounting evidence scattered across sessions, while the correct answer is 3. A graph memory retrieves six related nodes but never evaluates the condition for each event, and the model guesses 4. \sys{} classifies the query as \agg{} (aggregation), retrieves the event entries that appeared in answers to earlier queries, evaluates each candidate with an explicit yes/no judgment, and answers 3. The two samples agree, so it stops after two calls, saving the third. Table~\ref{tbl:casestudy} gives the full trace.
 \end{example}
 
 \input{figures/tex/introduction_scoreboard}
 
-\stitle{Contributions.} (1) We formulate agent memory management as query optimization and build \sys{}, which supplies the catalog, planner, and operator library that prior memory systems lack (Sections~\ref{sec:overview} and~\ref{sec:framework}).
-(2) We introduce second-order memory, which closes a feedback loop from the read path back to physical storage and lets a memory system improve on a user without supervision (Section~\ref{sec:secondorder}).
-(3) We combine class-level budget allocation with agreement-based stopping, which together reach a cost point that neither mechanism attains alone (Section~\ref{sec:executor}).
-(4) We evaluate \sys{} on eight long-term memory benchmarks and eight LLM backbones, where it matches or improves the strongest prior memory system on every benchmark while using fewer LLM calls than a uniform sampling reference of equal plan depth, and we release code, harness, and per-entry outputs for full reproduction\footnote{Materials will be made publicly available upon acceptance.}.
+\stitle{Contributions.}
+We summarize our contributions as follows.
+
+\noindent
+(1) We formulate agent memory as a data management problem and build \sys{}, the first memory system that provides a typed catalog, a query planner, and specialized operators for LLM agent memory (Sections~\ref{sec:overview} and~\ref{sec:framework}).
+
+\noindent
+(2) We introduce \emph{Second-Order Memory}, a workload feedback loop that improves memory quality over time for each user without supervision (Section~\ref{sec:secondorder}), and a \emph{Cost-Aware Executor} that reduces LLM calls by half while maintaining accuracy (Section~\ref{sec:executor}).
+
+\noindent
+(3) We evaluate \sys{} on eight long-term memory benchmarks and eight LLM backbones. \sys{} matches or improves the strongest prior system on every benchmark, by an average of $2.6$ points and up to $5.6$ points on \lmes{}, while reducing LLM calls by $50.7\%$ relative to a Uniform-$K{=}3$ reference (Section~\ref{sec:experiments}).
+
+\noindent
+(4) We release code, evaluation harness, and per-entry outputs for full reproduction\footnote{Materials will be made publicly available upon acceptance.}.

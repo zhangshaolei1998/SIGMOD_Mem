@@ -1,44 +1,54 @@
 %!TEX root = ../main.tex
-\section{Second-Order Memory over the Read Path}
+\section{Second-Order Memory}
 \label{sec:secondorder}
 
-The framework of Section~\ref{sec:framework} evaluates each query in isolation. The hundredth query for a user is therefore served in the same way as the first. Prior memory systems share this limitation. They observe only the \emph{write path}, which sessions arrived, and never the \emph{read path}, which stored records answered which queries. \sys{} closes this loop with a per-user workload log $\mathcal{W}_u$ (Section~\ref{subsec:log}) and a feedback rule that reshapes the catalog's physical organization (Section~\ref{subsec:feedback}).
+The framework of Section~\ref{sec:framework} treats every query independently: the hundredth query for a user is served in the same way as the first. Prior memory systems share this limitation. They observe only the \emph{write path}, which sessions arrived and what was extracted, but never the \emph{read path}, which stored records actually helped answer which queries. As a result, a memory system never learns which parts of a user's history are valuable.
 
-\subsection{Read-Path Logging}
+\sys{} closes this gap by maintaining a per-user workload log that tracks what memory was useful (Section~\ref{subsec:log}), and by using that log to reorganize memory for subsequent queries (Section~\ref{subsec:feedback}). The analogy is a self-tuning database~\cite{chaudhuri1997autotuning,chaudhuri2007selftuning}: the system observes the query workload, collects access statistics, and reorganizes its indexes accordingly, all without changing what any query returns.
+
+\subsection{Workload Logging}
 \label{subsec:log}
 
-Adapting storage to a user presupposes a record of what that user's queries actually consumed. Prior systems never keep that record. This subsection specifies what \sys{} logs, and it keeps the log small enough that logging does not itself become a scaling problem. For each user $u$, \sys{} maintains a compact log of query outcomes
+To adapt memory to a user, the system first needs a record of what that user's queries actually consumed. No existing memory system keeps such a record. This subsection describes what \sys{} logs and how the log stays compact.
+
+\stitle{What Is Logged.}
+For each user $u$, \sys{} maintains a compact workload log
 \[
 \mathcal{W}_u \;=\; \{\,(q_t,\ \rho(q_t),\ E_t^{+},\ \tau_t)\,\}_{t\leq T},
 \]
-where $E_t^{+}\subseteq\mathcal{E}$ is the set of catalog entities that appeared in the accepted answer $\hat{a}_t$ or its supporting evidence. The log carries three signals. The sequence of plan classes $\{\rho(q_t)\}$ describes \emph{what the user asks}. The sets $\{E_t^{+}\}$ record \emph{what memory answers it}. Sessions left unread beyond a staleness horizon indicate \emph{what memory is dead weight}. After Alice's first six queries, her log records a \point-heavy class mix over financial and scheduling topics, hits on $\textsf{Raiffeisen Basel}$ and her calendar events, and no reads on her older travel sessions.
+where $\tau_t$ is the timestamp of the query and $E_t^{+}\subseteq\mathcal{E}$ is the set of catalog entities that appeared in the accepted answer $\hat{a}_t$ or its supporting evidence. The log captures three signals. The sequence of query patterns $\{\rho(q_t)\}$ describes \emph{what the user asks}. The entity sets $\{E_t^{+}\}$ record \emph{what memory answers it}. Sessions left unread beyond a staleness horizon indicate \emph{what memory is unused}. After Alice's first six questions, her log records a \point-heavy pattern mix over banking and scheduling topics, with frequent hits on $\textsf{Raiffeisen Basel}$ and her calendar events, and no reads on her older travel sessions.
 
-\stitle{Per-Entity Statistics.}
-The log is statistical, not verbatim. For each catalog entity $e$ we keep three running numbers only, an issue count $n(e)=|\{t\leq T: e\in q_t\}|$ (how often $e$ has been mentioned by any query), an answer-hit count $h(e)=|\{t\leq T: e\in E_t^{+}\}|$ (how often $e$ appeared in an accepted answer), and a last-hit time $\tau^{\star}(e)=\max\{\tau_t: e\in E_t^{+}\}$. Storage is therefore $O(|\mathcal{E}|)$ per user and independent of query volume $T$. A DBMS keeps histograms and access counters instead of a replay log of every statement, for the same reason, since the optimizer needs the workload's distribution and not its transcript.
+\stitle{Compact Statistics.}
+The log is statistical and compact. For each catalog entity $e$, \sys{} tracks only three running numbers: an issue count $n(e)$ (how often $e$ has been mentioned by any query), a hit count $h(e)$ (how often $e$ appeared in an accepted answer), and the timestamp $\tau^{\star}(e)$ of its most recent hit. Storage is therefore $O(|\mathcal{E}|)$ per user and independent of the number of queries $T$. Just as a database keeps compact histograms to summarize past SQL workloads, the workload log keeps the \emph{distribution} of access in a fixed-size summary.
 
-\stitle{Answer Acceptance Criterion.}
-No gold labels exist at deployment time, and acceptance must therefore be defined operationally. \sys{} marks an answer accepted when the executor commits to it under Eq.~(\ref{eq:short}), which happens when two independent samples agree, and records only the entities the operator read in producing it. The score moves a ranking and never a decision, and a promoted entity changes which records the operator sees first, never what it computes or may return. The loop is a retrieval prior, not a cache of asserted facts.
+\stitle{When Is an Answer Accepted?}
+No gold labels exist at deployment time, so acceptance must be defined without supervision. \sys{} marks an answer as accepted when the executor commits to it under the agreement rule of Eq.~(\ref{eq:short}), \ie when two independent samples agree. The log then records only the entities that the operator read in producing that answer. This means the priority score (below) influences which records are \emph{retrieved first}, never what the operator \emph{computes or returns}. The feedback loop is a retrieval prior, a way to rank what the operator sees first.
 
 \stitle{Per-User Isolation.}
-$\mathcal{W}_u$ and every quantity derived from it are strictly per-user, with no cross-user aggregation. A new user starts from a neutral prior and adapts as queries arrive.
+$\mathcal{W}_u$ and every quantity derived from it are strictly per-user. A new user starts from a neutral prior and adapts as questions arrive. There is no cross-user aggregation.
 
-\subsection{Workload-Driven Storage Adaptation}
+\subsection{Workload-Driven Memory Adaptation}
 \label{subsec:feedback}
 
-A log is useful only if something reads it. This subsection turns the log into a single per-entity score and then spends that score on three decisions about where memory physically sits, leaving query semantics untouched throughout.
+A log is useful only if something acts on it. This subsection turns the log into a per-entity priority score and then uses that score to reorganize the catalog, leaving query semantics untouched throughout.
 
-\stitle{Workload-Driven Priority Score.}
-Each catalog entity $e$ carries a priority score
+\stitle{Priority Score.}
+Each catalog entity $e$ carries a priority score that combines three signals:
 \begin{equation}
 \label{eq:pi}
-\pi(e) \;=\; \underbrace{\alpha\cdot h_r(e)}_{\text{used in answers}}\;+\;\underbrace{\beta\cdot r(e)}_{\text{used recently}}\;+\;\underbrace{\gamma\cdot c(e)}_{\text{matches the class}},
+\pi(e) \;=\; \underbrace{\alpha\cdot h_r(e)}_{\text{answer hit rate}}\;+\;\underbrace{\beta\cdot r(e)}_{\text{recency}}\;+\;\underbrace{\gamma\cdot c(e)}_{\text{pattern match}},
 \end{equation}
-where $h_r(e)=h(e)/n(e)$ is the hit rate on queries that mention $e$, $r(e)=\exp\bigl(-\lambda(\tau_{\mathrm{now}}-\tau^{\star}(e))\bigr)$ is a recency term with decay rate $\lambda$, and $c(e)$ is the fraction of queries mentioning $e$ whose plan class matches $e$'s record type. The three weights are fixed at $(\alpha,\beta,\gamma)=(0.5,0.3,0.2)$ for every benchmark and backbone we report, with direct workload evidence given the dominant share and the remaining two terms acting as tie-breakers. We do not tune them per dataset, and Section~\ref{subsec:exp5} reports the effect of removing each term outright.
+where $h_r(e)=h(e)/n(e)$ is the fraction of queries mentioning $e$ whose answer included $e$, $r(e)=\exp\bigl(-\lambda(\tau_{\mathrm{now}}-\tau^{\star}(e))\bigr)$ is a recency decay, and $c(e)$ is the fraction of queries mentioning $e$ whose query pattern aligns with $e$'s record type (for example, an event entity scores higher when past queries were aggregations that enumerate events). The weights $(\alpha,\beta,\gamma)=(0.5,0.3,0.2)$ are fixed across all benchmarks and backbones, with direct evidence of usefulness given the dominant share and the remaining two terms acting as tie-breakers. We do not tune them per dataset, and Section~\ref{subsec:exp5} reports the effect of removing each term.
 
-\stitle{Storage-Level Actions.}
-$\pi(e)$ is refreshed after every query and drives the physical organization of the catalog through three actions, governed by fixed system-wide thresholds. \emph{Index warming} keeps the highest-priority entities by $\pi$ in a resident cache that biases candidate retrieval. \emph{Grounding-block composition} assembles the evidence block prepended to an operator's prompt from the top candidate entities by $\pi(e)$, and not from a static set. \emph{Session eviction} compresses or drops any session $s_i$ whose entities all fall below a cold threshold $\pi_{\mathrm{cold}}$. By Alice's seventh query, her calendar events sit at the top of the grounding block while the never-read travel sessions have been compressed away. When \opAGG{} then enumerates candidates for the outdoor question the eight relevant events are the first records it reads. The operator itself is unchanged, and the workload has reorganized only the catalog it reads.
+\stitle{How the Score Reshapes Memory.}
+$\pi(e)$ is refreshed after every query and drives three physical actions on the catalog, all governed by fixed thresholds:
 
-All three actions operate on \emph{where} memory sits, not on \emph{what} a query means. The access paths $\mathcal{I}_e,\mathcal{I}_a$ simply return workload-reweighted results, and every physical operator benefits without issuing an additional LLM call.
+\begin{itemize}[leftmargin=*]
+\item \emph{Rank and select.} When an operator retrieves from the indexes $\mathcal{I}_e$ and $\mathcal{I}_a$, the returned entries are ranked by $\pi(e)$. The context block prepended to the operator's prompt draws from this ranking, so a user whose questions focus on banking sees banking entities first, and a user who asks about travel sees travel entities first.
+\item \emph{Compress cold sessions.} Any session $s_i$ whose entities all fall below a cold threshold $\pi_{\mathrm{cold}}$ is compressed or dropped, freeing space for more relevant content.
+\end{itemize}
+
+By Alice's seventh query, her calendar events sit at the top of the context block while the unread travel sessions have been compressed away. When the \agg{} operator enumerates candidates for the outdoor query, the eight relevant events are the first records it reads. The operator itself is unchanged; the workload has reorganized only the catalog it reads.
 
 \stitle{Remarks.}
-The priority score of Eq.~(\ref{eq:pi}) implements the self-tuning-index principle~\cite{chaudhuri1997autotuning,chaudhuri2007selftuning} and the workload-adaptive stance of learned optimizers~\cite{neoopt,baoopt,balsa}, transferred to agent memory, where the system observes the query log, updates statistics online, reshapes physical storage, and leaves query semantics untouched. In \sys{} the recommender is $\pi(e)$, the log is $\mathcal{W}_u$, and the storage is the catalog. To our knowledge, no prior agent memory system closes this workload-to-storage loop. This is why prior accuracy on a given user stays flat as that user issues more queries (Section~\ref{subsec:exp6}).
+Both actions operate on \emph{where} memory sits in the ranking, leaving query semantics untouched. The indexes return workload-reweighted results, and every operator benefits without an additional LLM call. This priority-driven reorganization implements the self-tuning index principle~\cite{chaudhuri1997autotuning,chaudhuri2007selftuning}, transferred to agent memory. To our knowledge, no prior agent memory system closes this workload feedback loop, which is why prior systems' accuracy on a given user stays flat regardless of how many questions that user asks (Section~\ref{subsec:exp6}).

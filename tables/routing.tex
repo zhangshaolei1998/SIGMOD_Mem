@@ -2,8 +2,8 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Plan-selection quality and parameter stability on \membench. The
-      upper block compares the zero-supervision planner against an LLM planner
+    \caption{Query-classification quality and parameter stability on \membench. The
+      upper block compares the rule-based planner against an LLM planner
       that spends one call per query and against a fixed planner. The lower
       block varies the two parameters \sys{} fixes system-wide around their
       defaults $\theta{=}0.6$ and $\alpha{=}0.5$, holding all else equal.}
@@ -13,7 +13,7 @@
         \toprule
         \textbf{Planner} & \textbf{Class acc.} & \textbf{Planner calls} & \textbf{End-to-end acc.} \\
         \midrule
-        Surface rules (ours) & 91.4 & 0 & 92.8 \\
+        Rule-based (ours) & 91.4 & 0 & 92.8 \\
         LLM planner          & 95.1 & 1 & 93.2 \\
         Always \point        & 61.3 & 0 & 87.5 \\
         \midrule
