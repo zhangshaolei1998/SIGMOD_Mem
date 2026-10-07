@@ -4,13 +4,13 @@
 
 \input{figures/tex/framework_overview}
 
-This section traces one query through \sys{} end to end, so that the roles of the three components are clear before any is specified in detail. Figure~\ref{fig:framework_overview} shows the architecture: a foundational framework routes each query to a specialized operator, and two optimization layers refine what the operator reads and what it costs.
+This section traces one query through \sys{} end to end, so that the roles of the three components are clear before any is specified in detail. Figure~\ref{fig:framework_overview} shows the architecture: the framework routes each query to a specialized operator, and two optimization layers refine what the operator reads and what it costs.
 
 \stitle{Query Life Cycle.}
 Given a query $q$, \sys{} produces an answer in four steps.
 %
 \begin{enumerate}[leftmargin=*]
-\item \textbf{Classify.} Map $q$ to one of three patterns (\point{}, \agg{}, or \cmp{}) by matching keywords, with no LLM call (Section~\ref{subsec:planner}).
+\item \textbf{Plan.} Route $q$ to one of three patterns (\point{}, \agg{}, or \cmp{}) by matching keywords, with no LLM call (Section~\ref{subsec:planner}).
 \item \textbf{Ground.} Assemble relevant catalog entries into a context block. The second-order memory promotes entries that have been useful for this user in the past (Section~\ref{subsec:feedback}).
 \item \textbf{Execute.} Issue LLM calls under the operator's template. The cost-aware executor decides how many calls the query pattern warrants and stops early when two samples agree (Sections~\ref{subsec:budget} and~\ref{subsec:shortcircuit}).
 \item \textbf{Log.} Record which catalog entries appeared in the answer, so that the next query benefits from updated rankings (Section~\ref{subsec:log}).
@@ -19,8 +19,8 @@ Given a query $q$, \sys{} produces an answer in four steps.
 \stitle{End-to-End Example.}
 We illustrate the full pipeline on Alice, a user whose agent has recorded six months of conversations covering banking, travel, and daily activities.
 
-\etitle{Step 1: Query Classification.}
-Alice asks \emph{``How many of my events involve outdoor activity?''} The planner detects the quantifier phrase ``how many'' and classifies the query as \agg{} (aggregation). No LLM call is needed.
+\etitle{Step 1: Query Planning.}
+Alice asks \emph{``How many of my events involve outdoor activity?''} The planner detects the quantifier phrase ``how many'' and routes the query to \agg{} (aggregation). No LLM call is needed.
 
 \etitle{Step 2: Grounding.}
 The \agg{} operator retrieves candidate event entities from the catalog. Because Alice has already asked six questions in this session, the second-order memory has observed that her calendar and activity events frequently appear in accepted answers. These entries are promoted to the top of the candidate list, while unread travel sessions are ranked lower.
@@ -32,7 +32,7 @@ The operator enumerates eight candidate events and evaluates each against the pr
 The three events that contributed to the answer (\eg \textsf{hiking at Uetliberg}, \textsf{cycling by the Rhine}, \textsf{picnic in Bruderholz}) are recorded in Alice's workload log. The next time a query touches these entities, they will be retrieved faster.
 
 \medskip
-Had the same query been issued to a baseline that uses one generic pipeline, the system would scan all sessions uniformly, fail to isolate the eight relevant events, and miscount (the full-context baseline returns 5). \sys{} avoids this by classifying the query, specializing the operator, and grounding with workload-informed memory.
+Had the same query been issued to a baseline that uses one generic pipeline, the system would scan all sessions uniformly, fail to isolate the eight relevant events, and miscount (the full-context baseline returns 5). \sys{} avoids this by routing the query to a specialized operator and grounding with workload-informed memory.
 
 \stitle{How the Three Components Interlock.}
 The three components are not independent. The executor cannot budget calls until the planner has named the query pattern. The operator cannot read a useful candidate set until the second-order memory has ranked the catalog. The second-order memory cannot update until the executor has committed an answer. Removing any one therefore degrades the other two, which Section~\ref{sec:experiments} confirms by ablation.

@@ -24,34 +24,34 @@ Records are extracted only when needed. When a query first touches session $s_i$
 \stitle{Access Paths.}
 Operators need two kinds of lookup: finding which sessions mention a given entity, and finding the value of a given attribute. The catalog exposes one index for each: an entity index $\mathcal{I}_e$ that maps each entity to the sessions it appears in, and an attribute index $\mathcal{I}_a$ that maps each attribute key to its (entity, value, session) records. Operators read memory only through these two indexes, which keeps the storage swappable and the ranking tunable by the second-order memory (Section~\ref{sec:secondorder}).
 
-\subsection{Query Classification and Operators}
+\subsection{Query Planning and Operators}
 \label{subsec:planner}
 
-With structured data in place, the next question is which computation a given query needs. This subsection answers it in two steps: a classification rule that names the query pattern, and an operator library that executes each pattern differently.
+With structured data in place, the next question is which computation a given query needs. This subsection answers it in two steps: a planning rule that names the query pattern, and an operator library that executes each pattern differently.
 
-\stitle{Query Classification.}
+\stitle{Query Planning.}
 The planner $\rho$ uses only the query text and the answer choices:
 \begin{equation}
-\label{eq:classifier}
+\label{eq:planner}
 \rho(q) \;=\; \begin{cases}
-\agg, & q \text{ contains a phrase in } \mathrm{QuantPhr}\ \lor\ \mathcal{C} \text{ are numeric}, \\
-\cmp, & \text{else if } q \text{ contains a phrase in } \mathrm{CmpPhr}, \\
+\agg, & q \text{ matches } \mathrm{QuantPhr}\ \lor\ \mathcal{C} \text{ numeric}, \\
+\cmp, & \text{else if } q \text{ matches } \mathrm{CmpPhr}, \\
 \point, & \text{otherwise,}
 \end{cases}
 \end{equation}
-where $\mathrm{QuantPhr}$ is a fixed set of quantifier phrases (\textsf{how many}, \textsf{the number of}, \textsf{count}) and $\mathrm{CmpPhr}$ is a fixed set of comparative markers (\textsf{more}, \textsf{longer}, \textsf{most}). No LLM call or labeled data is needed. For example, \emph{``Who is my mortgage provider?''} falls through to \point{}. \emph{``How many of my events involve outdoor activity?''} matches \textsf{how many} and routes to \agg{}. \emph{``Which lasted longer, the Basel trip or the Zurich conference?''} matches \textsf{longer} and routes to \cmp{}.
-
-\stitle{Why Misclassification Is Safe.}
-A misclassified query affects only accuracy, not correctness. All three operators read the same catalog through the same indexes, so every operator retrieves admissible evidence and returns a well-formed answer regardless of which one is selected. Moreover, \point{} is the fall-through default, so unrecognized queries take the cheapest path. Section~\ref{subsec:exp7routing} measures the accuracy that classification contributes.
+where $\mathrm{QuantPhr}$ is a fixed set of quantifier phrases (\textsf{how many}, \textsf{the number of}, \textsf{count}) and $\mathrm{CmpPhr}$ is a fixed set of comparative markers (\textsf{more}, \textsf{longer}, \textsf{most}). No LLM call or labeled data is needed. For example, \emph{``Who is my mortgage provider?''} falls through to \point{}. \emph{``How many of my events involve outdoor activity?''} matches \textsf{how many} and routes to \agg{}. \emph{``Which lasted longer, the Basel trip or the Zurich conference?''} matches \textsf{longer} and routes to \cmp{}. Because all three operators read the same catalog through the same indexes, each returns a well-formed answer for any query, and \point{} serves as the natural fallthrough for unrecognized patterns.
 
 \stitle{Operator Library.}
 A point query needs a single value from the catalog, an aggregation query needs to enumerate candidates and count matches, and a comparison query needs to retrieve one value per candidate and compare them. Each operator implements that computation with the catalog indexes:
-\begin{align*}
+\begin{align}
+\label{eq:point}
 \Omega_{\point}(q) &\;=\; \mathrm{LLM}\bigl(\mathrm{template}_{\point}(\mathcal{I}_a[k_q])\bigr), \\
+\label{eq:agg}
 \Omega_{\agg}(q)   &\;=\; \bigl|\{\,e\in \mathcal{I}_e[T_q]\ :\ \mathrm{LLM}(\mathrm{pred}_q,e)=\texttt{yes}\}\bigr|, \\
+\label{eq:cmp}
 \Omega_{\cmp}(q)   &\;=\; \argmax_{e\in\{e_1,e_2\}}\ \mathcal{I}_a[k_q](e).
-\end{align*}
+\end{align}
 \opPOINT{} looks up the requested key $k_q$ in $\mathcal{I}_a$ and returns the value directly. \opAGG{} enumerates candidate entities of the referenced type $T_q$ from $\mathcal{I}_e$, evaluates each against the query predicate with a bounded \texttt{yes}/\texttt{no} judgment, and emits an integer count. On the outdoor query, it lists Alice's eight events, tags each, and emits \texttt{Answer: 3}. This makes the count explicit, directly enumerable from structured evidence. \opCMP{} extracts the compared key $k_q$ (here \textsf{duration}) for both candidates from $\mathcal{I}_a$ and presents them side by side, turning an alignment problem over long contexts into a direct comparison of two values.
 
 \stitle{Remarks.}
-The catalog, the planner, and the operator library form the foundational framework of \sys{}. Making the query pattern $c=\rho(q)$ explicit is the precondition for the two optimization layers that follow: the second-order memory tunes the indexes that operators read (Section~\ref{sec:secondorder}), and the cost-aware executor sets a different budget for each query pattern (Section~\ref{sec:executor}). Neither layer would be possible without knowing the query pattern first.
+The catalog, the planner, and the operator library form the framework of \sys{}. Once the query pattern $c=\rho(q)$ is explicit, two further optimizations become possible: the second-order memory can tune the indexes that operators read based on what has worked for each user (Section~\ref{sec:secondorder}), and the cost-aware executor can set a different budget for each query pattern because it knows which pattern it is serving (Section~\ref{sec:executor}).

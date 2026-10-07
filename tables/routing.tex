@@ -2,7 +2,7 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Query-classification quality and parameter stability on \membench. The
+    \caption{Query-planning quality and parameter stability on \membench. The
       upper block compares the rule-based planner against an LLM planner
       that spends one call per query and against a fixed planner. The lower
       block varies the two parameters \sys{} fixes system-wide around their
@@ -11,7 +11,7 @@
     \setlength{\tabcolsep}{4pt}
     \begin{tabular}{@{}lccc@{}}
         \toprule
-        \textbf{Planner} & \textbf{Class acc.} & \textbf{Planner calls} & \textbf{End-to-end acc.} \\
+        \textbf{Planner} & \textbf{Plan acc.} & \textbf{Planner calls} & \textbf{End-to-end acc.} \\
         \midrule
         Rule-based (ours) & 91.4 & 0 & 92.8 \\
         LLM planner          & 95.1 & 1 & 93.2 \\
