@@ -2,135 +2,414 @@
 \section{Experiments}
 \label{sec:experiments}
 
-We organize the evaluation around eight questions. Exp-1 asks whether \sys{} outperforms state-of-the-art memory systems across memory abilities. Exp-2 asks whether the advantage survives a change of backbone. Exp-3 asks which query patterns the advantage comes from. Exp-4 asks what the accuracy costs in LLM calls. Exp-5 asks how much each architectural layer contributes. Exp-6 asks whether the second-order memory improves a user over time. Exp-7 asks how accurate the zero-cost planner is and how sensitive the end-to-end result is to its two free parameters. Exp-8 asks how read-path cost behaves as history length grows.
+We examine evidence organization and pipelines (Exp-1--3 and Exp-5),
+persistent access experience (Exp-5--6), and selective execution
+(Exp-4, Exp-7, and Exp-8). Component controls complement overall scores;
+Section~\ref{subsec:setup} defines which mechanisms the prototype measures.
 
 \subsection{Experimental Setup}
 \label{subsec:setup}
 
+\stitle{Evaluation Scope.}
+The evaluated prototype uses \point{}, \agg{}, and \cmp{} as benchmark
+patterns, not the normalized dependency classes in
+Section~\ref{sec:framework}. It acquires session-level facts on first
+access, uses coarser workload experience than the fact-version credit
+specified here, and applies pattern-dependent reservations with
+agreement-based stopping.
+These measurements test evidence organization, workload-guided access,
+and selective execution, not the formal model's finer acquisition,
+normalized-plan routing, fact-version credit, or action-value estimator.
+Those policies require targeted evaluation.
+In the tables, a benchmark query is one question $Q$; it is not an
+internal memory query $q$. Uniform-$K{=}3$ names three read-path
+executions per benchmark question, not the adaptive reservation $K(q)$.
+
 \input{tables/datasets}
 
 \stitle{Datasets.}
-We use the eight long-term memory benchmarks in Table~\ref{tbl:benchmarks}, chosen to separate three memory abilities that a single benchmark would confound. \locomo~\cite{locomo} and \lmev~\cite{longmemeval} test recall over multi-session dialogue. \lmeo, \lmes, and \lmem~\cite{longmemeval} share one query style and scale the surrounding history by nearly two orders of magnitude, which lets history length be varied as a controlled factor. \evomem~\cite{evomemory} and \dynamicmem~\cite{dynamicmem} issue many questions per user over an evolving state, the only setting in which per-user adaptation becomes observable. \membench~\cite{membench} labels every one of its $300$ queries with the query pattern it requires, and it is therefore the one benchmark on which a per-class decomposition is possible.
+Table~\ref{tbl:benchmarks} groups eight benchmarks by the ability they
+stress. \locomo{}~\cite{locomo} and \lmev{}~\cite{longmemeval} test
+multi-session recall. \lmeo{}, \lmes{}, and \lmem{}~\cite{longmemeval}
+evaluate related tasks at increasing history lengths.
+\evomem{}~\cite{evomemory} and \dynamicmem{}~\cite{dynamicmem} contain
+repeated questions over evolving user state.
+\membench{}~\cite{membench} contains $300$ benchmark questions in the reported
+evaluation and supplies the pattern groups for the routing and cost
+controls. These settings expose different pressures: source access
+over long histories, computation over multiple facts, and accumulated
+experience across a user's requests.
 
 \stitle{Baselines.}
-We compare against seven systems in two groups. \etitle{(1) Prompting Baselines.} \textbf{Full-Context}~\cite{longcontext} places the entire history in the context window, and \textbf{RAG}~\cite{rag} retrieves top-$k$ passages by dense similarity. \etitle{(2) Memory Systems.} \textbf{MemGPT}~\cite{memgpt} pages facts between context tiers. \textbf{Mem0}~\cite{mem0} consolidates facts into a dictionary through an \textsc{Add}/\textsc{Update}/\textsc{Delete} loop, and \textbf{Mem0}$^{g}$ adds entity relations. \textbf{Zep}~\cite{zep} maintains a temporal knowledge graph. \textbf{LongMemEval-Fw}~\cite{longmemeval} applies a three-stage indexing, retrieval, and reading pipeline. All seven are run from their released implementations under the same backbone, which leaves the memory design as the sole source of any difference.
+The seven baselines are Full-Context~\cite{longcontext},
+RAG~\cite{rag}, MemGPT~\cite{memgpt}, Mem0 and
+Mem0$^{g}$~\cite{mem0}, Zep~\cite{zep}, and
+LongMemEval-Fw~\cite{longmemeval}. They provide, respectively,
+full-history prompting, passage retrieval, context tiers,
+consolidated facts and entity relations, temporal graphs, and an
+indexing--retrieval--reading pipeline.
+The reported comparison uses released implementations under a shared
+backbone. Prompts and implementation choices also differ, so component
+ablations complement the overall system comparison.
 
-\stitle{Evaluation Metrics.}
-Multiple-choice benchmarks are scored by exact match. The remaining benchmarks are scored by F1 against the gold answer, normalized at the phrase level for \lmev{} and at the token level elsewhere. Phrase-level normalization credits a prediction only when it reproduces the gold phrase, so absolute F1 on \lmev{} sits far below the token-level scores, and the two scales are not comparable; within \lmev{} the ranking across systems is unaffected. Higher is better throughout, and every reported number is an accuracy on the benchmark's own scale.
-
-\stitle{Backbone LLMs and Settings.}
-Unless stated otherwise all systems run on GPT-5.5. Exp-2 additionally evaluates three further closed-source backbones~\cite{gpt4,claude,gemini} and four open-source backbones, selected to span a wide capability range at two deployment tiers. \sys{} is implemented in Python against an OpenAI-compatible client. Every hyperparameter is fixed once and reused across all benchmarks and backbones, with no per-dataset tuning.
+\stitle{Metrics and Settings.}
+Multiple-choice tasks use exact match; open-answer tasks use F1, with
+phrase-level normalization for \lmev{} and token-level normalization
+elsewhere. Comparisons are within a benchmark's metric scale.
+The default backbone is GPT-5.5; Exp-2 covers four closed-source and
+four open-source models~\cite{gpt4,claude,gemini}.
+The prototype uses Python and an OpenAI-compatible client.
+Reported control settings are reused across benchmarks and backbones.
+Read-path calls are counted per benchmark question and exclude fact
+acquisition; Exp-4 distinguishes this metric from the full memory-query ledger in
+Eq.~\eqref{eq:cost}.
+The reported totals are not an acquisition-inclusive ledger or a
+measurement of separately accounted Agent-side calls.
 
 \input{tables/main_results}
 
-\subsection{Exp-1. Accuracy Across Three Memory Abilities}
+\subsection{Exp-1. Answer Scores Across Memory Abilities}
 \label{subsec:exp1}
 
-We compare \sys{} against all seven baselines on the eight benchmarks of Table~\ref{tbl:benchmarks}, grouped by the memory ability each one stresses. Table~\ref{tbl:main_results} gives the comparison. \sys{} matches or improves the strongest prior system on every benchmark, and the margin varies systematically with the memory ability the benchmark stresses.
+Table~\ref{tbl:main_results} shows that \sys{} matches or improves the
+strongest evaluated baseline in every column. The mean benchmark-score
+margin is $2.6$ points; this is an arithmetic mean of within-benchmark
+differences, not a pooled accuracy across different metrics.
+The distribution of gains is more informative than the mean alone.
 
-\stitle{Long-Horizon Memory.}
-The margin is widest on the three LongMemEval variants, where it reaches $4.9$ to $5.6$ points, and it does not shrink as history grows by nearly two orders of magnitude. The reason lies in what each system hands the model. A longer history enlarges the candidate set that similarity retrieval returns, so prior systems pass the model more passages and leave it to locate, order, and align the relevant facts inside the context window, the regime in which long-context models are known to undercount and misorder~\cite{longcontext,ruler}. \sys{} reads the fields a query needs from the catalog indexes, so the context block stays small and already structured, and the model only performs the reasoning step. The size of that block is set by the query pattern, independent of $|\mathcal{H}|$, which is why the margin persists at the largest scale.
+\stitle{Evidence organization matters most over long histories.}
+The margins on \lmeo{}, \lmes{}, and \lmem{} are $5.0$, $5.6$, and
+$4.9$ points. A query over many sessions has to recover the right
+entities and temporal versions before computing its answer.
+The architecture in Section~\ref{sec:overview} separates this source
+history from reusable fact values; the pipelines in
+Section~\ref{sec:framework} then expose coverage and binding obligations.
+This reduces the amount of evidence alignment left implicit in a long
+generation, a difficulty also observed in long-context
+evaluations~\cite{longcontext,ruler}.
+The maintained margin at the largest scale is consistent with this
+separation, rather than a benefit restricted to short histories.
+Exp-5 supplies the complementary evidence that removing the fact
+representation or explicit operators lowers accuracy.
 
-\stitle{Conversational Memory.}
-The margin is narrowest on this group, at $0.6$ points on \locomo{} and $1.6$ on \membench{}. These benchmarks ask mostly for facts stated in one place, a query pattern that a single retrieval pass already serves well, so there is less headroom for an operator to recover. The result on \lmev{} is $10.3$ against $9.4$ for the strongest baseline, a $9.6\%$ relative improvement on a strict phrase-level F1 scale on which every system scores in the single digits. What distinguishes \sys{} on this group is that the accuracy and the cost advantage hold together: on \membench{} it reaches the highest accuracy while issuing fewer LLM calls than the uniform reference, as Exp-4 shows.
+\stitle{Overall scores do not identify which computations improve.}
+The margins are $0.6$ points on \locomo{} and $1.6$ on \membench{}.
+These averages do not establish the workloads' plan-class distributions.
+An individual lookup requires identity/version selection and source
+support, whereas a population request also needs candidate computation.
+On \lmev{}, $10.3$ versus $9.4$ gives a $9.6\%$ relative improvement,
+but its phrase-level F1 scale prevents interpreting the absolute gap
+as equivalent to the multiple-choice gaps.
+Exp-3 tests the within-pattern distinction more directly.
 
-\stitle{Personalized State.}
-The two state-inference benchmarks separate the systems least in absolute terms, with all seven baselines falling within $5.4$ points on \evomem{} and $1.4$ points on \dynamicmem. These benchmarks issue many questions per user, and a system that treats each query independently answers the tenth exactly as it answered the first, which is what prior designs do: they record what arrives on the write path and never what succeeded on the read path. An aggregate accuracy therefore averages over query position, the dimension on which the second-order memory acts, and hides any per-user improvement. Exp-6 conditions on query position and recovers the effect that the aggregate hides.
+\stitle{Aggregate state accuracy can hide operational evolution.}
+On \evomem{}, \sys{} gains $2.5$ points over the strongest baseline;
+on \dynamicmem{}, it ties that baseline at $34.9$.
+This tie is important: repeated interaction does not imply a universal
+aggregate gain. An overall score mixes early queries with sparse
+experience and later queries that can reuse it.
+The position analysis in Exp-6 examines that trajectory, while Exp-5
+tests whether workload experience matters at unchanged call totals.
 
-\finding{\sys{} matches or improves the strongest prior system on all eight benchmarks, and the margin is largest where a single retrieval pass is least sufficient, on long histories and on repeated questions from one user.}
+\finding{The overall advantage is strongest on long-horizon workloads.
+Representation and pipeline ablations provide a more direct link to
+the technical mechanisms than the aggregate ranking alone.}
 
-\subsection{Exp-2. Backbone Generalization}
+\subsection{Exp-2. Transfer Across Backbones}
 \label{subsec:exp2}
 
-A system that supplies external structure should benefit every backbone, and the benefit should be largest where the backbone's own capacity is most limited. To test this, we hold \membench{} and the full \sys{} configuration fixed and vary only the backbone, over four closed-source and four open-source models spanning a wide capability range. Table~\ref{tbl:main_results_open} collects the comparison.
+We hold \membench{} and the reported configuration fixed and compare
+against the strongest baseline rerun with each backbone.
 
 \input{tables/main_results_open}
 
-\sys{} improves every backbone, which rules out an explanation resting on one model's inductive bias. The size of the improvement is what varies. It is smallest on the strongest backbone and largest on the weakest, and this ordering holds within each group separately. This pattern suggests that external structure compensates for capability the backbone lacks. A frontier model already holds more history in context and counts over it more reliably, so the incremental gain is smaller, but the gain remains positive even on the strongest backbone. The practical consequence is that \sys{} widens the set of backbones on which long-term memory is usable, which matters most where frontier inference per query is not affordable.
+The gains in Table~\ref{tbl:main_results_open} range from $1.6$ to
+$5.9$ points for closed-source models and from $5.8$ to $7.9$ for
+open-source models. Their group means are $3.9$ and $7.0$ points.
+Within each group, the gain increases as the prior-baseline score falls.
+Thus the advantage is not restricted to the default model's particular
+way of using memory.
 
-\finding{The advantage of \sys{} is not backbone-specific, and it grows as backbone capability falls, with external memory structure substituting for internal model capacity.}
+Explicit evidence processing provides a possible explanation: memory
+identifies values and exposes computation instead of leaving entity
+alignment, counting, and answering to one generation. This can help a
+weaker backbone, but source ambiguity and semantic judgments remain.
+The gains support transfer across models; they do not identify which
+internal capability causes the difference.
 
-\subsection{Exp-3. Per-Pattern Accuracy Decomposition}
+\finding{Gains transfer across all evaluated backbones and are larger
+for lower-scoring models within each group, consistent with explicit
+evidence processing reducing the burden on the backbone.}
+
+\subsection{Exp-3. Accuracy by Evidence Computation}
 \label{subsec:exp3}
 
 \input{tables/perclass}
 
-Exp-1 established that \sys{} leads overall. To locate the source of that lead, we decompose \membench{} accuracy by the pattern each query requires, which \membench{} labels directly. Table~\ref{tbl:perclass} breaks the accuracy out by query pattern.
+Within Table~\ref{tbl:perclass}, \sys{} exceeds the strongest prior
+score by $0.3$ points on point lookup, $6.1$ on aggregation, and
+$3.1$ on comparison. The difference between these gaps links the
+results to the pipelines more clearly than a single overall score.
 
-The decomposition reveals where the advantage originates. \sys{} leads on all three query patterns, and the gains concentrate on aggregation and comparison, where a specialized operator replaces unstructured reasoning. The separation appears on these two classes because they require the model to compose evidence across multiple records.
+\stitle{Aggregation needs coverage, not just relevance.}
+A count can be wrong even when the retrieved passages are topically
+relevant: candidates can be omitted or duplicated, and a mentioned
+event may not satisfy the requested predicate.
+The population pipeline in Eq.~\eqref{eq:new-reduce} separates
+enumeration, per-candidate judgment, and tallying.
+In Alice's example, pottery must be examined and excluded, not simply
+dropped because the desired answer concerns outdoor activities.
+Once each judgment is supported, arithmetic need not be another
+unstructured model inference.
+The larger aggregation gap is consistent with making these operations
+explicit, although the table does not individually measure coverage
+errors and predicate errors.
 
-\stitle{Aggregation.}
-Counting fails for reasons that a better retriever cannot fix. When candidate items are scattered through a long context, models miscount even after retrieving every relevant item~\cite{ruler}. Prior systems retrieve passages and ask for a count, which leaves the count implicit inside unstructured generation. \sys{} makes it explicit, enumerating candidates, deciding each one against the predicate, then tallying. Each step is bounded, and the total rests on enumerable evidence with an exact count.
-
-\stitle{Comparison.}
-Comparison fails through misalignment. The model must locate the compared attribute in two separate passages and align them before it can order them, and that alignment is what breaks on long histories. \sys{} performs the alignment outside the model, reading the attribute from the typed index for each candidate and placing both values adjacent in the prompt. The remaining task is an ordering over two values.
-
-Both failure modes live in how the model \emph{processes} retrieved evidence, which is why improving retrieval alone does not close the gap and why the computation has to follow from the query pattern.
+\stitle{Comparison needs aligned values; composition needs bindings.}
+A comparison must associate each normalized value with its event
+before ordering them. Retrieving both durations without that alignment
+can still select the wrong activity.
+For independent candidates this is an independent reduction; when its
+winner determines an organizer request, Eq.~\eqref{eq:new-compose}
+adds a dependent binding.
+The comparison scores support explicit value processing, but do not
+separately test that binding step. Establishing the new plan boundary
+requires dependency annotations, not relabeling the original comparison
+group as \comp{}.
 
 \input{tables/case_study}
 
-To make the two failure modes concrete, Table~\ref{tbl:casestudy} traces one aggregation query through \sys{} and two baselines. Both baselines had the relevant material available, and in neither case did retrieval fail. The prompting baseline miscounts evidence spread across sessions, and the graph memory retrieves topically related nodes without resolving the predicate the query asks about. \sys{} removes the two failures with different layers. The planner selects the \agg{} pattern through Eq.~(\ref{eq:planner}), the second-order memory promotes the entities this user's earlier queries resolved, the operator records an explicit decision per candidate before tallying, and the executor withholds its third call once two samples agree.
+A separate benchmark trace in Table~\ref{tbl:casestudy} shows the distinction:
+Full-Context leaves counting implicit and returns 5; Zep leaves the
+predicate unresolved and returns 4; the prototype makes candidate
+decisions explicit and returns 3 after two agreeing executions.
+The trace illustrates why a relevant representation alone is not a
+complete computation. It also separates the roles of access experience,
+candidate evaluation, and stopping, without proving that each one
+independently caused the correct answer.
 
-\finding{The accuracy advantage concentrates on aggregation and comparison, where a specialized operator replaces unstructured reasoning over scattered evidence.}
+The reported per-pattern scores have an unresolved grouping/averaging
+provenance: they cannot be read as a micro-accuracy decomposition of
+Table~\ref{tbl:main_results} under shared class weights.
+The comparisons above are within Table~\ref{tbl:perclass};
+attributing a fraction of the overall gain to a pattern requires the
+original per-query records.
+
+\finding{The largest within-pattern gap is on aggregation, where
+coverage and candidate decisions must precede tallying. Comparison
+supports explicit value alignment, not a separate test of dependent
+bindings.}
 
 \input{tables/cost_breakdown}
 \input{figures/tex/pareto}
 
-\subsection{Exp-4. Cost Analysis}
+\subsection{Exp-4. Where Execution Savings Come From}
 \label{subsec:exp4}
 
-Accuracy bought with extra LLM calls is an artifact of the budget, and the architecture should be evaluated separately. To separate the two, we measure the LLM calls each system issues per query on \membench{} and place cost and accuracy on the same axes. Cost is counted on the read path for every system, so a system that spends a retrieval or rewriting call before generating is charged for it. Write-path extraction is a one-time per-session cost that every structured system amortizes over the queries touching that session, including the on-demand extraction of \sys{}, and it is excluded uniformly for all systems. We additionally include two reference configurations that fix the sampling budget uniformly at one call and at three calls per query, which isolates the effect of \emph{allocating} a budget from the effect of its \emph{size}.
+Table~\ref{tbl:cost} separates two sources of read-path savings:
+selecting which queries receive repeated execution, and stopping before
+all allocated repetitions are spent.
 
-Figure~\ref{fig:pareto} gives the result. \sys{} occupies the upper-left region, where no evaluated system attains both lower cost and comparable accuracy. The two groups miss it for different reasons. Prior memory systems are inexpensive and lose accuracy on the queries a single pass cannot answer. The uniform three-call reference recovers part of that accuracy and remains dominated, because it spends its extra samples on the point lookups that never required them.
+\stitle{Selective allocation avoids paying for uniform repetition.}
+Uniform-$K{=}3$ uses $900$ calls at $89.1$ accuracy.
+The budget-only prototype uses $532$ calls at $92.8$:
+$368$ fewer calls ($40.9\%$) with a higher score.
+This comparison changes evidence processing as well as allocation,
+so it does not attribute the accuracy gain to budget selection alone.
+It does show that a larger global call count is not sufficient to
+recover the prototype's accuracy. Repetition must be attached to
+useful evidence work.
 
-Table~\ref{tbl:cost} separates the two mechanisms behind this position. Pattern-aware budgeting acts across queries, assigning the single-call budget to the point lookups that form the majority of the workload. Agreement-based early stopping, the rule of Eq.~(\ref{eq:short}), acts within the remaining queries and stops early on those whose two samples already agree. The first mechanism draws from the easy pattern and the second from the easy instances of the hard patterns, and the slices are disjoint, which lets the savings compose. The accuracy column settles what the savings cost: it is unchanged between the two \sys{} configurations, so early stopping removes $88$ of $532$ calls without giving up a single answer, and the accuracy of \sys{} is attributable to the framework.
+\stitle{Stopping removes work after the allocation decision.}
+Agreement stopping reduces $532$ calls to $444$, saving another $88$
+($16.5\%$ of the budget-only count), with the same reported aggregate
+accuracy. Point lookups remain at one call; aggregation and comparison
+average $2.30$ and $2.18$ instead of three.
+These unequal realized costs show that an allocated maximum need not
+be fully spent. In total, $456$ calls are saved relative to Uniform-$K{=}3$,
+giving the reported $50.7\%$ reduction.
+The equality of aggregate scores does not imply identical predictions.
 
-\finding{\sys{} is Pareto-optimal against every evaluated system, and early stopping lowers its cost at unchanged accuracy, which attributes the accuracy to the framework, with early stopping purely reducing cost.}
+These controls motivate the action-level decision in
+Section~\ref{sec:executor}: allocate to unresolved work, not just a query
+label, and compare another action's predicted evidence-gap reduction
+with its cost. Alice's verified duration comparison needs no new
+semantic judgment; her ambiguous outing requires new source
+evidence rather than more votes over the same fragment.
+Agreement-based savings support selective stopping as a design
+direction, but do not establish the accuracy of the new action forecasts.
+
+Figure~\ref{fig:pareto} summarizes the reported read-path tradeoff.
+The accounting excludes fact acquisition, including properties extracted
+from an old session in response to a new query. This is not necessarily
+a one-time session cost. Full $C(q)$ in Eq.~\eqref{eq:cost} must charge
+such work where it occurs and distinguish cold acquisition from warm
+reuse; the reported savings cannot yet be extended to that full ledger.
+
+\finding{The budget-only prototype uses $368$ fewer calls than
+Uniform-$K{=}3$; stopping saves another $88$ at unchanged aggregate
+accuracy. These configurations motivate selective execution, while
+full acquisition costs remain outside the reported metric.}
 
 \input{tables/ablation}
 
-\subsection{Exp-5. Ablation Study}
+\subsection{Exp-5. Which Mechanisms Matter}
 \label{subsec:exp5}
 
-The three layers of \sys{} were motivated by three different obstacles. This experiment confirms that each layer contributes independently by removing one component at a time and measuring both accuracy and cost on \membench{} and \lmev{}, a multiple-choice benchmark and an open-answer one. Table~\ref{tbl:ablation} collects the ablations.
+Table~\ref{tbl:ablation} groups prototype modules, not the three memory
+levels $\Hh,\Ff,\Uu$. The differences expose distinct roles for evidence
+organization, experience-guided access, and execution controls.
 
-Each layer contributes on a distinct axis, confirming they are complementary. Removing any framework component costs accuracy and simultaneously removes the pattern that the budget depends on, so cost rises to the uniform setting. Within the framework the ordering is informative. Removing the catalog is worse than removing the planner, since a planner that routes correctly still has nothing typed to read. The second-order memory contributes most on \lmev{}, where a user's repeated questions benefit from read-path feedback, and its three components are not equally active on both benchmarks: session eviction leaves \membench{} untouched, whose histories stay within the cache, while on \lmev{} it saves $49$ calls. In the executor the two mechanisms differ in kind. Pattern-aware budgeting lowers cost on both benchmarks and also contributes $0.3$ points on \membench, since a point lookup that is sampled three times can be outvoted on the one answer the index already supplies. Agreement-based early stopping changes no accuracy figure on either benchmark and is a cost mechanism alone.
+\stitle{Organized facts and pipelines both matter.}
+Removing the fact representation lowers accuracy by $6.1$ points on
+\membench{} and $2.7$ on \lmev{}.
+Removing operators lowers it by $4.9$ and $2.0$; removing the planner
+lowers it by $3.7$ and $1.5$.
+Each configuration also issues more calls than the full prototype.
+The loss therefore cannot be explained simply by having fewer inference
+calls. Reusable identities and values provide the input to explicit
+computation; routing selects which computation to apply.
+The separately observed losses support both representation and processing.
+They are not additive contributions: changing one module changes the
+evidence and work seen by other modules.
+Nor does this table directly test recovery of a newly requested property
+from raw sessions.
 
-\finding{Each layer contributes on a distinct axis, accuracy for the framework, accuracy under repeated queries for the second-order memory, and cost for the executor, confirming they are complementary.}
+\stitle{Experience changes evidence use at the same call count.}
+Removing workload experience loses $0.7$ points on \membench{} and
+$1.7$ on \lmev{}, while total calls remain $444$ and $602$.
+Removing priority ranking loses $0.3$ and $1.0$, again without changing
+those totals. These contrasts are especially relevant to our core
+claim: better memory operation need not mean more model calls.
+The larger score change on the open-answer benchmark is consistent
+with evidence choice affecting which facts reach the answer.
+It is not an error-type analysis, and the metric scales differ.
+
+In the formal model, Eq.~\eqref{eq:pi} makes the analogous
+access mechanism explicit: current relevance identifies eligible facts,
+while remembered use changes their order. The measured experience
+controls support workload-guided access, but do not separately verify
+the fact-version credit rule or rule out changes in cache contents.
+
+\stitle{Allocation and stopping have different effects.}
+Without the measured pattern-aware budget, calls increase by $312$
+on \membench{} and $301$ on \lmev{}; accuracy falls by $0.3$ on the
+former and is unchanged on the latter.
+Without early stopping, calls increase by $88$ and $121$, with unchanged
+aggregate accuracy. Thus allocation can affect both quality and expense,
+whereas stopping is accuracy-neutral in these reported aggregates.
+The session-eviction control adds $49$ calls on \lmev{} for a
+$0.2$-point change. Its original scope is not documented here;
+it should not be interpreted as removing the durable raw evidence
+needed by the architecture in Section~\ref{sec:overview}.
+
+\finding{Representation and pipelines lose accuracy despite more calls
+when removed; workload experience loses accuracy at unchanged call
+totals. The two mechanisms cannot be reduced to a larger inference budget.}
 
 \input{tables/second_order_learning}
 
-\subsection{Exp-6. Accuracy by Query Position}
+\subsection{Exp-6. Does Access Improve Across a User's Queries?}
 \label{subsec:exp6}
 
-The second-order memory predicts a specific and falsifiable behavior. Accuracy on one user should rise as that user asks more questions, and no system without a read-path feedback loop should show the same rise. To test this we restrict to users with at least ten queries, so that all four position buckets are populated, condition on the position of a query within its own user's sequence, and report accuracy per position bucket, holding backbone, prompt, and benchmark fixed so that position is the only variable. Table~\ref{tbl:second_order_learning} bins the accuracy by position. Because the evaluation population is a subset of the full test set, the absolute accuracy levels in each column differ from Table~\ref{tbl:main_results}; the within-table ranking and the monotone trend are the subject of this experiment.
+Table~\ref{tbl:second_order_learning} restricts to users with at least
+ten queries and groups each query by its position in that user's
+benchmark-question sequence. This subset is different from the full evaluation population;
+its absolute scores should not be substituted for the overall scores.
 
-The predicted separation appears on both benchmarks. \sys{} improves monotonically across position buckets, gaining $5.6$ points on \evomem{} and $3.7$ on \dynamicmem{} from the first bucket to the last, while no baseline moves by more than $0.5$ points in either direction and none shows a monotone trend, since none of them records which stored entries produced accepted answers and none has a signal that could vary with position. The starting point is equally informative. In the first bucket the workload log is still empty, so \sys{} has no second-order signal yet and begins level with the static rankers, below Zep by $0.8$ points on \dynamicmem. It overtakes them from the second bucket onward and leads by $3.0$ points by the last. A mechanism that learns from answered queries should hold no advantage before any query has been answered, and this is the crossover that behavior produces.
+On \evomem{}, \sys{} rises from $22.2$ to $27.8$; on \dynamicmem{},
+from $29.1$ to $32.8$. The gains are $5.6$ and $3.7$ points.
+The strongest baseline, Zep, changes by only $0.2$ and $-0.1$ points
+between the same endpoint buckets. Consequently, \sys{}'s gap to Zep
+widens from $0.4$ to $5.8$ on \evomem{} and moves from $-0.8$ to
+$3.0$ on \dynamicmem{}.
+All four \sys{} buckets increase monotonically, whereas the evaluated
+baselines show only small fluctuations.
 
-The improvement cannot be attributed to the model or the prompt, both of which are identical across buckets. It follows the priority score of Eq.~(\ref{eq:pi}), which accumulates evidence that an entity participates in answers this user accepts. By the later buckets the context block handed to the operator is composed largely of entities with a demonstrated history of being queried, where a static ranker still offers entities selected by similarity to the current query alone. This is the read-path signal of Section~\ref{sec:secondorder}, and Exp-5 confirms that removing the workload log removes the effect.
+This is the cross-question behavior second-order memory seeks to produce.
+Closed conversations extend raw history; queries add facts and operational
+experience. Alice's durations enrich content, while their reported use
+and acquisition cost guide later access. Content growth and operational
+experience are therefore distinct explanations of improvement.
 
-\finding{Only \sys{} improves as a user continues asking, which isolates read-path feedback as the mechanism and shows that prior systems are structurally unable to exhibit this behavior.}
+The fixed-call experience ablations in Exp-5 and the position trend
+address complementary questions: experience affects scores without
+more aggregate calls, and scores improve as more experience becomes
+available. Together they support the role of persistent access feedback
+more strongly than either table alone.
+They still do not isolate fact-level use from cache growth and query
+difficulty. The backbone and prompt are fixed across buckets, but those
+other factors are not. Shuffled-order, fixed-cache, and difficulty-matched
+controls are needed for a causal attribution to operational evolution.
 
-\subsection{Exp-7. Planner Accuracy and Parameter Stability}
+\finding{The advantage widens across the observed position buckets.
+Together with fixed-call experience ablations, this supports persistent
+access adaptation, while leaving cache growth and query-order effects
+to be separated.}
+
+\subsection{Exp-7. The Value and Cost of Routing}
 \label{subsec:exp7routing}
 
 \input{tables/routing}
 
-The planner governs which operator handles each query, so its quality directly affects the end-to-end result. This experiment validates its design along two dimensions, planning quality and parameter stability. We measure planning accuracy against the class labels \membench{} supplies, comparing the rule-based planner against an LLM planner that spends one call per query and against a fixed planner that assigns every query to \point. We then perturb the early-stopping threshold and the leading weight of the priority score over wide intervals and re-measure end-to-end accuracy. Table~\ref{tbl:routing} covers both.
+The rule-based router in Table~\ref{tbl:routing} reaches $91.4\%$
+pattern accuracy at zero LLM calls.
+The LLM router reaches $95.1\%$, a $3.7$-point increase, but improves
+end-to-end accuracy by only $0.4$ points.
+Its extra call for each of $300$ queries adds $300$ calls, or
+$67.6\%$ of the full prototype's $444$-call count.
 
-Three observations follow from the table. First, the rule-based planner reaches $91.4\%$ planning accuracy at zero LLM cost. Second, planning quality has already saturated with respect to what the system does with it: an LLM planner reaches $95.1\%$, yet buys only $+0.4$ end-to-end accuracy for one extra call on every query, which is $300$ additional calls against a total of $444$, and a gap of $0.4$ is no larger than the spread the parameter perturbations below produce. Paying two-thirds more calls for a difference of that size is not a trade this workload rewards. Third, the fixed planner locates where the value of query planning actually sits: routing every query to \point{} costs $5.3$ points end-to-end, an order of magnitude more than separates any two planner variants, so what matters is that the query pattern is chosen at all, and the choice granularity has diminishing returns. The lower block perturbs the two parameters \sys{} fixes system-wide, the early-stopping threshold $\theta$ and the leading weight $\alpha$ of the priority score, across intervals spanning half of each parameter's usable range. End-to-end accuracy stays within $0.6$ points over both, which leaves the reported result independent of any parameter search.
+Routing accuracy and answer accuracy therefore do not improve
+one-for-one. A corrected route can still encounter missing source
+evidence or a wrong predicate judgment; some route differences may
+also leave the final answer unchanged.
+These are possible mechanisms, not observed error counts.
+By contrast, always choosing \point{} loses $5.3$ end-to-end points.
+The comparison supports making the required computation explicit,
+while showing a small measured return from further router complexity
+in this workload.
 
-\finding{The rule-based planner reaches $91.4\%$ planning accuracy at zero cost, an LLM planner cannot convert better planning into materially better answers, and end-to-end accuracy is stable across wide parameter intervals.}
+The lower block perturbs the original agreement threshold $\theta$
+and priority weight $\alpha$; accuracy ranges span at most $0.6$ points.
+They control retained repetitions and evidence priority. The modest
+variation suggests tolerance, not statistical equivalence or freedom
+from calibration. Their definitions differ from normalized-plan routing
+and action-value allocation, so these scores do not validate those policies.
 
-\subsection{Exp-8. Scalability Analysis}
+\finding{Selecting a nontrivial computation matters more here than
+paying for the more accurate router: the latter adds $300$ calls for
+a $0.4$-point end-to-end gain.}
+
+\subsection{Exp-8. How History Length Changes the Tradeoff}
 \label{subsec:exp8}
 
 \input{tables/scaling}
 
-A memory system is only interesting if its cost survives the growth that motivates it. The three LongMemEval variants share one query style and scale the surrounding history by nearly two orders of magnitude, from $40$K to $1.5$M tokens, which isolates history length as the varied factor. We measure calls per query, end-to-end latency, and accuracy at each scale against the prompting baseline, whose prompt necessarily carries the history it searches. Table~\ref{tbl:scaling} tracks all three.
+Table~\ref{tbl:scaling} increases history from $40$K to $1.5$M tokens,
+a $37.5\times$ range. Reported calls per benchmark question remain $1.9$ for \sys{}
+and $1.0$ for Full-Context. Yet latency grows $20.7\times$ for
+Full-Context, from $2.3$s to $47.6$s, and only $1.09\times$ for
+\sys{}, from $3.2$s to $3.5$s. Call count alone is therefore not a
+complete description of inference expense.
 
-Cost separates the two systems along the length axis. Calls per query are flat for both, at $1.9$ for \sys{} and $1.0$ for Full-Context, so latency is where the difference appears. Latency grows $20.7\times$ for Full-Context, from $2.3$s to $47.6$s, and $1.09\times$ for \sys{}, from $3.2$s to $3.5$s. At the shortest history \sys{} is the slower of the two, by $0.9$s, because catalog access is a fixed overhead that a single prompting call does not pay. That overhead does not grow, so it is already repaid at $115$K, where \sys{} answers in $3.4$s against $5.8$s, and at $1.5$M it is $13.6\times$ faster. What the table shows is a different asymptote, with \sys{} converging to a flat cost while the baseline grows linearly. Accuracy moves with the difficulty of each variant for both systems, and the ranking does not: \sys{} leads at all three scales, by $17.9$, $21.3$, and $16.7$ points, with no erosion as history grows.
+At $40$K, structured memory access is slower by $0.9$s.
+At $115$K, \sys{} takes $3.4$s against $5.8$s, and at $1.5$M
+it is $13.6\times$ faster.
+This crossover makes the architectural tradeoff concrete:
+organizing and accessing evidence adds overhead, but need not repeatedly
+place the entire source history inside the answering prompt.
+Reusable facts and bounded evidence-processing steps provide a
+plausible explanation for the measured latency trend.
+The table does not report per-call token lengths or separate acquisition
+time, so it cannot directly attribute the trend to either one.
 
-The asymmetry is structural and follows from where each system spends. A prompting baseline must carry the history it searches, so its prompt grows with $|\mathcal{H}|$ and its latency grows with it. The read-path cost of \sys{} is set by the query pattern through Eq.~(\ref{eq:cost}), which depends on the shape of the query alone, independent of the size of the store, and adding sessions changes what the catalog contains without changing what a query costs to answer.
+Accuracy advantages over Full-Context remain $17.9$, $21.3$, and
+$16.7$ points across the three variants.
+The formal pipelines still require population coverage and binding
+evidence. The favorable measured tradeoff does not establish
+history-independent cost: new properties can require acquisition,
+and population work can grow with scope even under an execution cap.
 
-\finding{Read-path cost is governed by the query pattern, independent of history length, which turns the growth of the store from a linear cost into a constant one and leaves the accuracy advantage of \sys{} intact at every scale.}
+\finding{The measured tradeoff shifts in favor of structured memory as
+history grows: call counts stay fixed while latency diverges. Coverage
+and acquisition obligations still limit any claim of constant full cost.}

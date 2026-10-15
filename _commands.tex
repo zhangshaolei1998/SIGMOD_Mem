@@ -4,6 +4,7 @@
 
 \usepackage{amsthm}
 \newtheorem{example}{Example}
+\newtheorem{proposition}{Proposition}
 
 \usepackage{xcolor}
 \usepackage{multirow}
@@ -17,7 +18,7 @@
 \usepackage{makecell}
 \usepackage{graphicx}
 
-\usetikzlibrary{shapes.geometric,shapes.symbols,positioning,arrows.meta,fit,backgrounds,calc,shadows.blur}
+\usetikzlibrary{shapes.geometric,shapes.symbols,positioning,arrows.meta,fit,backgrounds,calc}
 
 % ===== Math operators =====
 \DeclareMathOperator*{\argmax}{arg\,max}
@@ -36,6 +37,7 @@
 % ===== Paragraph titles (ACM run-in heading convention) =====
 \newcommand{\stitle}[1]{\smallskip\noindent\textbf{#1}}
 \newcommand{\etitle}[1]{\smallskip\noindent\textit{#1}}
+\newcommand{\runin}[1]{\stitle{#1.}}
 
 % ===== Color palette =====
 \definecolor{cadmiumgreen}{rgb}{0.0, 0.42, 0.24}   % positive / gains
@@ -74,6 +76,36 @@
 \newcommand{\agg}{\textsc{aggregate}\xspace}
 \newcommand{\cmp}{\textsc{compare}\xspace}
 
+% Core memory notation and the three normalized query-plan classes.
+\newcommand{\Hh}{\mathcal{H}}
+\newcommand{\Ff}{\mathcal{F}}
+\newcommand{\Uu}{\mathcal{U}}
+\newcommand{\Mm}{\mathcal{M}}
+\newcommand{\ret}{\textsc{Lookup}\xspace}
+\newcommand{\red}{\textsc{Independent}\xspace}
+\newcommand{\comp}{\textsc{Dependent}\xspace}
+\DeclareMathOperator*{\argmin}{arg\,min}
+% Examples may break across columns; continuation headers keep the pieces
+% identifiable without pushing a long example to the next column wholesale.
+\def\memoryexamplelabel#1:#2\relax{#1}
+\newcommand{\memorycontinuedframe}[1]{%
+  \fboxrule=0.7pt\fboxsep=5pt
+  \fbox{\vbox{%
+    \hsize=\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax
+    \parindent=0pt\small
+    \noindent\textbf{\expandafter\memoryexamplelabel\memoryexampletitle:\relax
+      \space(continued)}\par\smallskip
+    #1}}}
+\newenvironment{memoryexample}[1]{%
+  \def\memoryexampletitle{#1}%
+  \def\FrameCommand{\fboxrule=0.7pt\fboxsep=5pt\fbox}%
+  \let\MidFrameCommand\memorycontinuedframe
+  \let\LastFrameCommand\memorycontinuedframe
+  \setlength{\OuterFrameSep}{6pt}%
+  \par\begin{framed}\small\parindent=0pt
+  \noindent\textbf{#1}\par\nobreak\smallskip
+}{\end{framed}\par}
+
 % ===== Global table typography (ACM booktabs style) =====
 \renewcommand{\arraystretch}{1.1}
 \setlength{\tabcolsep}{4.5pt}
@@ -93,4 +125,6 @@
 \newcommand{\findingnum}{\stepcounter{mycounterfinding}\arabic{mycounterfinding}}
 \definecolor{shadecolor}{RGB}{242,242,242}
 \newcommand{\finding}[1]{%
-  \begin{shaded}\noindent\textbf{Finding \findingnum: #1}\end{shaded}}
+  \par\noindent\begin{minipage}{\columnwidth}%
+  \begin{shaded}\noindent\textbf{Finding \findingnum: #1}\end{shaded}%
+  \end{minipage}\par}

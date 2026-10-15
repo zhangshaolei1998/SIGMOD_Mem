@@ -1,45 +1,74 @@
 %!TEX root = ../main.tex
+\begin{samepage}
 \section{Preliminaries}
 \label{sec:preliminary}
 
-This section defines the concepts and notation used throughout the paper.
+\label{subsec:new-interface}
 
-\subsection{Interaction History and Memory Query}
-\label{subsec:prelim-data}
+The user exchanges a \emph{question} $Q$ and an \emph{answer} $A$ with
+the agent. The agent exchanges a \emph{memory query} $q$ and
+\emph{retrieved memory} $m$ with the memory system:
+\begin{equation}
+\label{eq:new-interface}
+\mathrm{User}\xrightarrow{Q}\mathrm{Agent}
+\xrightarrow{q}\Mm\xrightarrow{m}\mathrm{Agent}
+\xrightarrow{A}\mathrm{User}.
+\end{equation}
+\end{samepage}
+A question can induce several memory queries; its conversation history
+and each query's operational experience are recorded separately.
+The agent uses $m$ to generate $A$; the memory support guarantee concerns
+$m$, not arbitrary claims generated in $A$.
+The query/evidence
+terminology is consistent with memory retrieval work~\cite{mem0,memr3}.
 
-\stitle{Interaction History.}
-An LLM agent interacts with a user across a sequence of \emph{sessions} $\mathcal{H}=\{s_1,\dots,s_N\}$, where $s_i=(t_i,\mathrm{txt}_i)$ is a timestamp $t_i$ paired with a natural-language transcript $\mathrm{txt}_i$ of mixed user and assistant turns. Sessions are read-only after they close, and $\mathcal{H}$ only grows over time. In our benchmarks a single user's history reaches up to $1.5$M tokens spread over tens of sessions~\cite{longmemeval,locomo}, well beyond any current context window.
+A memory query specifies an information need, an entity or population
+scope, and a temporal scope. Execution uses the source snapshot available
+when $q$ arrives; newly closed sessions become available to later queries.
+Current and historical questions can therefore select different
+versions of the same fact. We model finite requests for facts or
+computations grounded in this history; the agent handles external
+knowledge and creative generation.
 
-\stitle{Memory Query.}
-A memory query is a triple $q=(\mathrm{Q},\mathcal{C},\tau)$, where $\mathrm{Q}$ is a natural-language question, $\mathcal{C}$ is an optional set of answer choices (empty for open-ended queries), and $\tau$ is the timestamp at which the query is issued. The agent must return an answer $\hat{a}$ derivable from the history available at that moment, $\mathcal{H}_{\leq\tau}=\{s_i:t_i\leq\tau\}$. Answers are scored against a reference answer, with accuracy or F1 computed on $\hat{a}$ (Section~\ref{subsec:setup}).
+Retrieved memory is $m=(v,E,\sigma)$,
+where $v$ is a value, fact collection, justified partial bound, or
+$\bot$ when no value can be established.
+$E$ is a finite evidence bundle of source-backed fact versions and
+scope, version, and binding checks, including unresolved checks.
+$\sigma$ is
+\texttt{supported}, \texttt{partial}, or \texttt{unknown}. A count needs
+evidence that covers its requested population; a dependent result needs
+evidence for each required link. Supported means all required checks
+are discharged; partial means some evidence is established but an
+obligation remains; unknown means no source support for the result is established.
+A verified empty scope is supported absence, not unknown.
+An unresolved check is not evidence that its predicate is false.
+These states refer to a validated plan and source snapshot, not
+a promise of perfect natural-language interpretation.
 
-\subsection{Problem Statement}
-\label{subsec:prelim-problem}
+Experience is retained per user: later queries can benefit from earlier
+fact use and execution outcomes without mixing different users' states.
+Table~\ref{tab:new-notation} lists the core symbols; each operational
+quantity is defined where it is used.
 
-Given a stream of queries $q_1,q_2,\dots$ over an evolving $\mathcal{H}$, a \emph{memory management system} produces answers $\hat{a}_1,\hat{a}_2,\dots$ under three simultaneous objectives.
-\begin{enumerate}
-\item[\textbf{(O1)}] \textbf{Accuracy.} Maximize the fraction of $\hat{a}_t$ that match the gold answer for $q_t$.
-\item[\textbf{(O2)}] \textbf{Bounded Cost.} Keep the per-query LLM cost $\mathrm{cost}(q_t)$ bounded as $|\mathcal{H}|$ grows, so the system scales to long histories and heavy usage.
-\item[\textbf{(O3)}] \textbf{Improvement over Time.} Later queries on the same $\mathcal{H}$ should benefit from the answers to earlier ones.
-\end{enumerate}
-Prior memory systems focus primarily on \textbf{(O1)}~\cite{mem0,zep,memgpt,longmemeval}: they report aggregate accuracy across queries, without measuring or controlling cost or per-user adaptation. \sys{} treats \textbf{(O2)} and \textbf{(O3)} as explicit objectives, enforcing each by a dedicated component: the cost-aware executor for cost (Section~\ref{sec:executor}) and the second-order memory for per-user improvement (Section~\ref{sec:secondorder}).
-
-\subsection{How an Agent Answers a Query}
-\label{subsec:prelim-flow}
-
-Regardless of the specific memory system, an LLM agent processes each query along two paths. A \emph{write path} fires when a session closes, converting $s_i$ into the system's internal representation and appending it to a memory store $\mathcal{M}$. Systems differ here in representation: long-context prompting keeps $s_i$ verbatim, RAG embeds chunks, Mem0 extracts facts, and Zep builds graph edges. A \emph{read path} fires per query and proceeds in three common steps: \textbf{(R1)}~retrieve a candidate set from $\mathcal{M}$, \textbf{(R2)}~pack candidates into a context block that fits the LLM's window, and \textbf{(R3)}~reason over that block to produce $\hat{a}_t$.
-
-Two observations about this structure motivate \sys{}. First, $\mathrm{cost}(q_t)$ is dominated by R3, and drawing multiple independent answers (Self-Consistency~\cite{sc}) multiplies it on every query regardless of whether the query needed the extra samples. Second, prior systems run the same R1--R3 pipeline for every query and retain nothing from the outcome. Neither what $\mathrm{Q}_t$ asks for nor the history of the user's earlier queries influences how the next one is served.
-
-\subsection{Three Query Patterns}
-\label{subsec:prelim-primitives}
-
-Natural-language queries against agent memory fall into three patterns that differ in the computation they require. This taxonomy is the entry point for the planner and operator library of Section~\ref{sec:framework}.
-
-\begin{itemize}[leftmargin=*]
-\item \textbf{Point lookup (\opPOINT).} Retrieve a single stored fact, \eg \emph{``Who is my mortgage provider?''}. The answer is one value from the catalog and does not require aggregation or comparison.
-\item \textbf{Aggregation (\opAGG).} Compute a quantity over multiple records, \eg \emph{``How many of my events involve outdoor activity?''}. The answer requires enumerating candidates and applying a predicate to each.
-\item \textbf{Comparison (\opCMP).} Rank or order two or more records on a shared attribute, \eg \emph{``Which lasted longer, the Basel trip or the Zurich conference?''}. The answer requires extracting a key from each candidate and reducing to an $\argmax$.
-\end{itemize}
-
-These three patterns parallel common database operations (index lookup, group-by aggregate, order-by comparison), and the LLM's error modes differ across them: point lookups are reliable, aggregation suffers from undercounting when evidence is scattered~\cite{ruler}, and comparison suffers from misalignment when values live in distant passages. Prior memory systems collapse all three into one retrieval pipeline, so every query faces every error mode. \sys{} separates them and gives each its own specialized operator.
+\begin{table}[t]
+\centering\small
+\caption{Core notation for the two interfaces and the evolving memory hierarchy.}
+\label{tab:new-notation}
+\begin{tabular}{@{}l p{0.70\columnwidth}@{}}
+\toprule
+Symbol & Meaning\\
+\midrule
+$Q,A$ & User question $Q$; agent answer $A$\\
+$q,m$ & Memory query $q$; retrieved memory $m$\\
+$\Hh,\Ff,\Uu$ & User--Agent sessions $\Hh$; query-induced facts $\Ff$; Agent--Memory experience $\Uu$\\
+$\Mm$ & User's memory state $\Mm=(\Hh,\Ff,\Uu)$\\
+$f$ & A first-order fact $f$, with source and time\\
+$P$ & Query plan $P=(R,D,g)$: requests $R$, dependencies $D$, result operation $g$\\
+$E^r,E^u$ & Returned fact-version IDs $E^r$; validated reported-use IDs $E^u\subseteq E^r$\\
+$\ell,C$ & Unresolved-check fraction $\ell$; memory-query LLM-call cost $C(q)$\\
+$K(q)$ & Current additional-call reservation $K(q)$ for query $q$\\
+$\lambda$ & Diagnostic--cost tradeoff weight $\lambda$\\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -2,15 +2,16 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Calls per query on \membench. The two \sys{} rows share an accuracy
-      column, which isolates early stopping as a pure cost mechanism and
-      attributes the accuracy to the framework and not to the budget.}
+    \caption{Reported read-path calls on \membench{}, excluding fact
+      acquisition. Agreement stopping saves calls with unchanged
+      aggregate accuracy in this comparison; it does not establish
+      that budget choices are generally accuracy-neutral.}
     \label{tbl:cost}
     \setlength{\tabcolsep}{3pt}
     \begin{tabular}{@{}lcccrc@{}}
         \toprule
         \multirow{2}{*}{\textbf{Configuration}}
-            & \multicolumn{3}{c}{\textbf{Calls per query}}
+            & \multicolumn{3}{c}{\textbf{Calls per question}}
             & \multirow{2}{*}{\textbf{Total}} & \multirow{2}{*}{\textbf{Acc.}} \\
         \cmidrule(lr){2-4}
             & \opPOINT & \opAGG & \opCMP & & \\

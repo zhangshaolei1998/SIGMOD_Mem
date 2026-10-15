@@ -2,16 +2,16 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Query-planning quality and parameter stability on \membench. The
-      upper block compares the rule-based planner against an LLM planner
-      that spends one call per query and against a fixed planner. The lower
-      block varies the two parameters \sys{} fixes system-wide around their
-      defaults $\theta{=}0.6$ and $\alpha{=}0.5$, holding all else equal.}
+    \caption{Prototype pattern-routing and control sensitivity on
+      \membench{}. The original agreement threshold $\theta$ and
+      priority weight $\alpha$ use defaults $\theta{=}0.6$ and
+      $\alpha{=}0.5$. Neither these controls nor the pattern labels
+      evaluate the normalized plan partition or action-value policy.}
     \label{tbl:routing}
     \setlength{\tabcolsep}{4pt}
     \begin{tabular}{@{}lccc@{}}
         \toprule
-        \textbf{Planner} & \textbf{Plan acc.} & \textbf{Planner calls} & \textbf{End-to-end acc.} \\
+        \textbf{Planner} & \textbf{Pattern acc.} & \textbf{Planner calls} & \textbf{End-to-end acc.} \\
         \midrule
         Rule-based (ours) & 91.4 & 0 & 92.8 \\
         LLM planner          & 95.1 & 1 & 93.2 \\

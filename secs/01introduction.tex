@@ -4,61 +4,136 @@
 
 \input{figures/tex/introduction_example}
 
-Memory is the foundation of a personal Large Language Model (LLM) agent. It allows the agent to remember a user's preferences, track promises and plans across conversations, and answer questions about the past. As agents are deployed in more settings, from personal assistants to customer service bots, the interaction history they accumulate grows rapidly, reaching hundreds of thousands of tokens per user, and in some deployments exceeding a million~\cite{mem0,memgpt,zep}. This growing volume makes it increasingly difficult to find the right information at the right time, and requires a systematic way to \emph{manage} agent memory.
+Long-term LLM agents rely on memory to answer questions about a user's
+preferences, experiences, and changing circumstances.
+Memory management involves two distinct decisions: \emph{what to store}
+from past interactions and \emph{how to use it} for an arriving query.
+A growing fact collection helps the agent know more about the user,
+but does not itself determine how those facts should be accessed or
+processed. Continually evolving memory therefore requires both
+retained knowledge and execution that learns from experience.
 
-Yet today's memory systems store this data but do not manage it. Systems differ in what they store --- raw transcripts~\cite{longcontext}, embedded chunks via Retrieval-Augmented Generation (RAG)~\cite{rag}, extracted facts~\cite{mem0}, paged tiers~\cite{memgpt}, or graph edges~\cite{zep} --- but at query time every one follows the same pipeline: retrieve relevant passages, then generate an answer, regardless of what the query asks. No system distinguishes whether a query needs a simple fact lookup, an enumeration of multiple records, or a comparison across entries, and no system learns which stored memories are more useful than others. As Figure~\ref{fig:motivating} illustrates, this leads to two limitations.
+Existing systems have advanced these aspects. MemGPT manages context
+tiers~\cite{memgpt}, Mem0 extracts and updates facts~\cite{mem0}, Zep
+maintains temporal relationships~\cite{zep}, and A-MEM evolves linked
+notes~\cite{agenticmem}. MemR$^3$ adapts retrieval through evidence-gap
+tracking and reflective control~\cite{memr3}.
+These advances motivate distinguishing content evolution and
+within-query adaptation from experience retained to improve later
+memory operations.
 
-\stitle{Two Limitations of Current Systems.}
-%
-\begin{itemize}[leftmargin=*]
-\item \textbf{Static memory operations.}
-Every query goes through the same retrieval pipeline, and no system records which memories contributed to correct answers. As a result, systems fail on queries that a single retrieval pass cannot serve, such as counting candidates across sessions or comparing values from distant passages~\cite{ruler}, and every query starts from scratch as if the user had never asked anything before.
+\runin{Two Limitations: What to Store and How to Use It}
+The first limitation concerns the state retained across queries;
+the second concerns how the current query is executed.
+Figure~\ref{fig:motivating} illustrates both through Alice's March
+activities: an outdoor hike organized by Ava, an indoor pottery class
+organized by Ben, and an outdoor ride organized by Cara.
 
-\item \textbf{High cost of memory access.}
-No system differentiates queries by difficulty. A simple fact lookup that could be answered in one LLM call receives the same computational budget as a complex aggregation that benefits from multiple samples, wasting calls on easy queries while hard queries receive no extra allocation.
+\begin{itemize}[leftmargin=*,nosep]
+\item \textbf{How to store: facts without the experience of using them.}
+Content-centered memory preserves user facts, but the fact collection
+alone does not record which facts were retrieved, which the agent
+consumed, or what providing them cost.
+For Alice's outdoor-contact question, memory returns three settings and
+three organizer links. The agent's answer names Ava and Cara, while Ben's organizer
+link is unused; pottery's indoor setting is still needed for exclusion.
+Keeping the six facts preserves what memory knows about Alice,
+but not what this interaction teaches memory about serving her.
+\item \textbf{How to use: one generic execution path for different queries.}
+A generic retrieve-then-answer workflow leaves the memory-side computation implicit,
+even when retrieval is repeated.
+Alice's organizer lookup needs one fact; an outdoor count needs
+population coverage and setting judgments; finding the organizer
+of the longest outdoor activity needs aligned durations and a
+winner-to-organizer binding.
+The same generic path can retrieve relevant evidence without completing
+these different computations.
+A common repetition budget also ignores the evidence state: verified
+durations can be reused, whereas a missing duration needs acquisition.
+Uniform execution can therefore hurt both performance and efficiency.
 \end{itemize}
 
-Both limitations stem from the same root cause: agent memory is treated as a flat store with no management layer. Database management systems solved the analogous problem for structured data decades ago: schemas organize what is stored, query planners choose how to answer each query, and cost models control how much computation each answer spends~\cite{selinger1979,graefe1993}. Agent memory calls for the same separation of concerns, yet no existing system provides it. Building such a system raises three challenges.
+These limitations are independent: retaining experience does not
+specify a suitable computation, and specializing execution does not
+preserve what earlier queries taught the system.
+To address both, using memory must leave reusable experience, and
+later execution must act on it.
+This connection raises three challenges: one about what to store,
+and two about how to use it.
 
-\stitle{Three Challenges for Memory Management.}
-%
-\begin{itemize}[leftmargin=*]
-\item \textbf{Architecture: what to store and how to answer.}
-Agent memory is unstructured natural language. To manage it, the system needs to impose structure on the stored data, recognize different types of queries, and route each to specialized logic, ideally without spending an extra LLM call.
+\runin{Three Challenges for Evolving Memory Management}
+\textbf{First, represent user knowledge and operational experience
+separately.}
+Raw User--Agent sessions must remain recoverable when a future query needs an
+unextracted detail, such as the hike's duration.
+Derived facts must retain their sources; Agent--Memory experience must
+retain query context, reported fact use, and cost.
+The architecture must connect these states without confusing
+frequently used evidence with factual truth.
 
-\item \textbf{Performance: how memory retrieval improves over time.}
-A good memory system should get better as it serves more queries for the same user, just as a database improves its indexes as it collects workload statistics. This requires a feedback loop that records which stored entries helped answer past queries and uses this signal to reorganize the memory for subsequent queries, a mechanism that no existing agent memory system implements. The difficulty is that no ground-truth answers are available at deployment time, so the system must define ``useful'' without external supervision.
+\textbf{Second, expose the required computation for performance.}
+Given that state, execution must distinguish an individual fact lookup,
+independent evidence composition, and answer-dependent bindings.
+Experience can guide evidence access, but cannot replace coverage
+or a missing link. It must operate within a pipeline that makes
+these requirements explicit.
 
-\item \textbf{Efficiency: how to control the cost of memory access.}
-An LLM call is the dominant cost unit, and drawing multiple independent answers to the same query (Self-Consistency~\cite{sc}) multiplies it. A system that spends the same budget on every query wastes calls on easy queries that do not need them, and cannot reallocate to hard queries that do. The system needs a cost model that assigns different budgets to different query types and stops spending when additional calls cannot change the outcome.
-\end{itemize}
+\textbf{Third, allocate worthwhile work for efficiency.}
+A suitable pipeline determines what must be resolved, not how much
+additional work is needed.
+Queries in the same plan class can have different gaps and reuse
+opportunities. The system must allocate effort from the current
+evidence and historical costs, retaining an explicit partial result
+when an obligation remains unresolved.
 
-\stitle{Our Proposal.}
-To address these challenges, we propose \sys{}, a memory management system for LLM agents that treats agent memory as managed data. As shown in Figure~\ref{fig:framework_overview}, \sys{} consists of a framework and two optimization layers.
+\runin{Our Proposal}
+We introduce \sys{}, a continually evolving memory management system
+that connects these storage and execution decisions through persistent
+fact-use and execution experience.
 
-\begin{itemize}[leftmargin=*]
-\item \textbf{Framework: Typed Catalog, Query Planning, and Operators} (Section~\ref{sec:framework}). To address the architecture challenge, \sys{} organizes raw sessions into a typed catalog of entities, events, relations, and attributes. A lightweight planner recognizes three query patterns, \point{} (fact lookup), \agg{} (aggregation), and \cmp{} (comparison), by matching keywords in the query, with no LLM call. Each pattern is handled by a specialized operator that defines a fixed sequence of steps for answering the query.
+For storage, a progressive hierarchy retains \emph{raw User--Agent
+sessions}, \emph{first-order facts}, and \emph{second-order
+Agent--Memory experience} (Section~\ref{sec:overview}).
+Following the query-driven acquisition principle in EUR~\cite{eur},
+the agent's memory query for Alice's contact question acquires settings
+and organizers; her later comparison acquires durations from the same
+sessions. Closed conversations extend raw history; query execution and
+validated use reports extend second-order experience.
+First-order memory helps the agent understand the user;
+second-order memory helps memory understand how to serve the user.
 
-\item \textbf{Second-Order Memory} (Section~\ref{sec:secondorder}). To address the performance challenge, \sys{} logs which catalog entries appeared in answers that two independent samples agreed on, and ranks those entries higher for subsequent queries. This is a workload feedback loop, analogous to self-tuning indexes in classical databases~\cite{chaudhuri1997autotuning}, applied to agent memory for the first time.
+This experience informs execution in two ways.
+For performance, \emph{experience-guided memory access}
+(Section~\ref{sec:framework}) organizes normalized plans into
+single-fact retrieval, independent composition, and dependent composition.
+The pipelines preserve source support, coverage, and bindings while
+remembered use guides grounding.
+Alice's longest-outdoor-activity organizer plan compares the 4-hour hike
+with the 3-hour ride, then binds the winning hike to Ava's organizer link.
 
-\item \textbf{Cost-Aware Executor} (Section~\ref{sec:executor}). To address the efficiency challenge, \sys{} assigns different LLM call budgets to different query patterns: one call for simple lookups, up to three for hard aggregation or comparison queries. It further stops early when two samples already agree, using agreement as a signal that additional calls are unnecessary.
-\end{itemize}
+For efficiency, \emph{cost-aware execution}
+(Section~\ref{sec:executor}) uses that plan's unresolved obligations
+and remembered action outcomes to reserve a query-specific budget.
+Known settings and organizers are reused; missing durations receive
+acquisition work. A later comparison can then reuse the verified
+durations without new semantic judgments.
+Execution contributes its observed outcomes, cost, and validated use credit to second-order
+memory, changing how subsequent queries are served.
+This feedback connects what memory retains with how it operates.
 
-\begin{example}
-\label{exam:intro}
-Alice asks her agent \emph{``How many of my events involve outdoor activity?''} after six earlier questions. A full-context baseline scans the whole history and answers 5, miscounting evidence scattered across sessions, while the correct answer is 3. A graph memory retrieves six related nodes but never evaluates the condition for each event, and the model guesses 4. \sys{} routes the query to \agg{} (aggregation). The second-order memory promotes event entities that appeared in answers to earlier questions, so the operator reads the relevant events first. It evaluates each candidate with an explicit yes/no judgment and answers 3. The cost-aware executor draws two independent samples; both return 3, so it skips the third sample and commits after two LLM calls. Table~\ref{tbl:casestudy} gives the full trace.
-\end{example}
+\runin{Contributions}
+The central contribution is a coupled model of conversational and
+operational memory, linked by query-induced user facts. The hierarchy
+defines what is retained; normalized plans define how evidence is
+processed; contextual use and cost experience guide grounding and
+determine how much additional work is warranted.
+Our prototype evaluation covers eight long-term memory benchmarks
+and eight LLM backbones. Its reported scores match or improve the
+strongest evaluated prior memory system on every benchmark, by an
+average of $2.6$ points and up to $5.6$ points on \lmes{}.
+Its measured read-path configuration uses $50.7\%$ fewer LLM calls
+than a Uniform-$K{=}3$ reference on \membench{}.
+Section~\ref{subsec:setup} distinguishes these measurements from the
+generalized routing, attribution, and action-value policies.
 
 \input{figures/tex/introduction_scoreboard}
-
-\stitle{Contributions.}
-We summarize our contributions as follows.
-
-\noindent
-(1) We formulate agent memory as a data management problem and build \sys{}, the first memory system that provides a typed catalog, a query planner, and specialized operators for LLM agent memory (Sections~\ref{sec:overview} and~\ref{sec:framework}).
-
-\noindent
-(2) We introduce \emph{Second-Order Memory}, a workload feedback loop that improves memory quality over time for each user without supervision (Section~\ref{sec:secondorder}), and a \emph{Cost-Aware Executor} that reduces LLM calls by half while maintaining accuracy (Section~\ref{sec:executor}).
-
-\noindent
-(3) We evaluate \sys{} on eight long-term memory benchmarks and eight LLM backbones. \sys{} matches or improves the strongest prior system on every benchmark, by an average of $2.6$ points and up to $5.6$ points on \lmes{}, while reducing LLM calls by $50.7\%$ relative to a Uniform-$K{=}3$ reference (Section~\ref{sec:experiments}).

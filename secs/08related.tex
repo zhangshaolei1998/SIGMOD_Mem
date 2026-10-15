@@ -2,26 +2,76 @@
 \section{Related Work}
 \label{sec:related}
 
-\subsection{Agent Memory Systems and Benchmarks}
+\runin{Conversation and fact memory}
+MemGPT manages information across context and external memory
+tiers~\cite{memgpt}. Mem0 builds persistent memory by extracting and
+updating salient conversational facts~\cite{mem0}. Zep represents
+time-dependent relationships through a temporal knowledge
+graph~\cite{zep}, while A-MEM builds linked notes that evolve with
+new experiences~\cite{agenticmem}. These systems develop fact and context
+representations. \sys{} connects raw User--Agent history and query-induced
+facts with persistent Agent--Memory experience. This second-order state
+records exposure, reported use, and execution outcomes/cost, rather than
+another semantic description of the conversation.
 
-The dominant thread in agent memory research treats memory as a \emph{storage} abstraction. MemGPT~\cite{memgpt} and its framework successor Letta~\cite{letta} draw inspiration from operating-system memory hierarchies. They treat the LLM context window as a fast tier and external stores as slow tiers, with paging between them managed by the agent via function calls. Their contribution is the movement policy across tiers, and the query-time algebra over the stored data remains a single retrieval pass. Mem0~\cite{mem0} designs a write-time pipeline that extracts, evaluates, and consolidates salient facts through an \textsc{Add}/\textsc{Update}/\textsc{Delete}/\textsc{Noop} loop, and its graph variant Mem0$^{g}$ adds entity and relation edges. On the read side Mem0 falls back to dense retrieval top-$k$, without a query planner or any optimization specific to the query pattern. Zep~\cite{zep}, powered by the Graphiti engine, models memory as a temporal knowledge graph over episodes, entities, and communities. It is tuned for retrieval accuracy and latency, but every query still goes through the same retrieval strategy. Further work such as A-MEM~\cite{agenticmem}, AriGraph~\cite{arigraph}, HippoRAG~\cite{hipporag}, MemoRAG~\cite{memorag}, and hierarchical retrieval methods such as RAPTOR~\cite{raptor} and GraphRAG~\cite{graphrag} add autonomous memory evolution, biologically inspired retrieval, and global memory augmentation. Skill-library agents such as Voyager~\cite{voyager} treat learned skills as reusable memory. All of these systems enrich the storage layer, as chronicled by a recent survey~\cite{agentmemsurvey}. None provides a query planner over typed operators, a cost model that budgets LLM calls by query pattern, or a workload feedback loop. \sys{} fills these three gaps in Sections~\ref{sec:framework}, \ref{sec:executor}, and \ref{sec:secondorder}.
+\runin{Retrieval control and memory queries}
+LongMemEval separates memory design into indexing, retrieval, and
+reading, and evaluates information extraction, multi-session reasoning,
+temporal reasoning, knowledge updates, and abstention~\cite{longmemeval}.
+MemR$^3$ uses an evidence-gap tracker and a controller that selects
+retrieval, reflection, or answering~\cite{memr3}. These precedents expose
+memory access and iterative evidence gathering. Our normalized-plan
+partition specifies the required computation; second-order experience
+changes evidence priorities, reuse, and budgets across the user's queries.
 
-Long-term memory evaluation has matured in parallel. LoCoMo~\cite{locomo} introduces multi-session dialogue at scale, and LongMemEval~\cite{longmemeval} covers five memory abilities up to 1.5M tokens while contributing the three-stage pipeline our LongMemEval-Fw baseline follows. Further benchmarks include MemoryBank~\cite{memorybank}, PerLTQA~\cite{perltqa}, DialSim~\cite{dialsim}, and LongBench~\cite{longbench}.
+\runin{Query-driven acquisition}
+EUR~\cite{eur} argues that incoming queries can reveal missing concepts
+and facts and leave reusable state for future workloads. We adopt
+query-driven acquisition for conversational evidence: first-order state
+retains the acquired facts, and second-order state retains their use and
+execution experience. Incoming information needs therefore change both
+content and later memory operations.
 
-\subsection{DBMS Foundations for LLM Systems}
+\runin{Repeated reasoning and computational budgets}
+Self-consistency samples multiple reasoning paths and aggregates their
+answers~\cite{sc}. Agreement is useful evidence about
+variation among outputs, but cannot verify a shared false premise.
+Our execution policy conditions additional work on source support,
+evidence coverage, unresolved dependencies, and cost experience.
+It can reuse verified values without resampling, or spend on an
+unresolved predicate or source region. Action-level forecasts require
+comparison with fixed and adaptive sampling policies.
 
-Two complementary DBMS lines meet in this paper. First, a body of work applies DBMS abstractions to LLM analytics over \emph{typed tabular data}. LOTUS~\cite{lotus} defines the first declarative model for AI-based tabular transformations such as semantic filter, join, top-$k$, and group-by, with gold algorithms and cost-optimized execution plans that achieve up to $1{,}000\times$ speedup. DocETL~\cite{docetl}, UQE~\cite{uqe}, and SUQL~\cite{suql} address related settings for unstructured documents and hybrid structured/unstructured search. These works share the core intuition of \sys{}, namely to lift LLM operations to a queryable algebra, but their target data is structured (DataFrames, tables). Agent memory is unstructured, its schema is latent in natural language, and its queries are user questions expressed as free text. To our knowledge \sys{} is the first system to transfer the full query-processing stack (planner, operators, cost model, and statistics) to agent memory.
+\runin{Evaluation of long-term agent memory}
+LoCoMo studies long-term conversational recall and related tasks across
+many sessions~\cite{locomo}. LongMemEval emphasizes multiple forms of
+memory reasoning~\cite{longmemeval}, and MemBench broadens memory
+evaluation across scenarios and question types~\cite{membench}.
+Their category labels are not normalized-plan classes. We distinguish
+benchmark-level observations from validation of dependency routing,
+fact-version credit, and action forecasts.
 
-Second, three founding lines of RDBMS research supply the pillars \sys{} borrows, namely cost-driven access-path selection~\cite{selinger1979}, extensible operator libraries~\cite{graefe1993}, and workload-driven self-tuning~\cite{chaudhuri1997autotuning,chaudhuri2007selftuning} that learned optimizers~\cite{neoopt,baoopt,balsa} later extended. The planner, the operator library, and the second-order memory of \sys{} play these three roles in turn. The adaptation is non-trivial, since the operators reason over natural language, the records are unstructured, and the cost unit becomes an LLM call, but the separation of concerns transfers intact.
-
-\subsection{LLM Reasoning Primitives}
-
-Chain-of-Thought~\cite{cot}, Self-Consistency~\cite{sc}, ReAct~\cite{react}, Reflexion~\cite{reflexion}, and Tree-of-Thoughts~\cite{tot} form the reasoning substrate on which the operators of \sys{} build. A line of work reduces the cost of self-consistency by adapting how many samples a query receives, halting once drawn answers agree~\cite{adaptiveconsistency,escsc}. These methods decide within a single query and must draw at least two samples before any decision is possible. \sys{} composes with them from the opposite direction, using the query pattern to decide how much budget a query is eligible for before sampling begins, which removes the extra sample entirely for the class that cannot benefit from it (Section~\ref{sec:executor}).
-
-
+% Balance the last page before its left column has shipped.
+\balance
 \section{Conclusion}
 \label{sec:conclusion}
 
-We introduced \sys{}, a DBMS-style memory management system for LLM agents. \sys{} organizes agent memory as managed data with a catalog, a zero-cost planner, and three specialized operators, and augments this framework with two optimization layers: a \emph{Second-Order Memory} that lets storage adapt to per-user workload, and a \emph{Cost-Aware Executor} that allocates its call budget by query pattern and by sample agreement. On eight long-term memory benchmarks and eight LLM backbones, \sys{} matches or improves the strongest prior memory system on every benchmark, by up to $5.6$ points on \lmes. On \membench{} it further reduces LLM calls by $50.7\%$ relative to a Uniform-$K{=}3$ reference while attaining higher accuracy, and its second-order memory is the only mechanism among the evaluated systems whose accuracy rises monotonically across successive queries from the same user. The classical DBMS separation of storage, planning, and execution therefore transfers cleanly to agent memory, and each of the three layers contributes measurably. We view \sys{} as a first step toward treating LLM agent memory as first-class managed data, a setting in which decades of data management results become applicable.
+\sys{} evolves both memory content and operations. Closed User--Agent
+conversations extend raw sessions; queries acquire first-order facts.
+Agent--Memory executions and validated use reports extend second-order
+experience, including empty-result outcomes and cost. Facts help the
+agent understand the user; experience helps memory understand how to
+serve the user. Single-fact retrieval, independent composition, and
+dependent composition expose the required computation. Cost-aware
+execution allocates work from current gaps and remembered outcomes,
+preserving partial or unknown support whenever an obligation remains.
 
-Future work will explore multi-user catalog sharing under privacy constraints, tighter integration of \sys{} with retrieval-native architectures that pre-index by query pattern, and extensions of the operator library to multi-hop reasoning that currently falls back to \agg{} enumeration.
+The prototype evaluation covers eight benchmarks and eight LLM
+backbones, with gains up to $5.6$ points on \lmes{} and $50.7\%$ fewer
+read-path calls than Uniform-$K{=}3$ on \membench{} at higher accuracy.
+These measurements support evidence processing, workload-guided access,
+and selective execution. Targeted validation of normalized-plan routing,
+fact-version attribution, action forecasts, and acquisition-inclusive
+costs remains necessary, as does reconciliation of the per-pattern
+aggregation. The interface retains explicit incomplete results wherever
+source or computation obligations remain unresolved.

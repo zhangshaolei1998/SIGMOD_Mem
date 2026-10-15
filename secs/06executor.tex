@@ -1,46 +1,152 @@
 %!TEX root = ../main.tex
-\section{Cost-Aware Execution}
+\section{For Efficiency: Cost-Aware Execution}
 \label{sec:executor}
 
-A memory system that answers well but spends unboundedly does not scale to long histories and heavy usage. To control this cost while preserving accuracy, \sys{} introduces a cost-aware executor that exploits the query patterns identified by the planner.
+Plan class determines the required computation, not its expense.
+One independent-composition query can reuse every value; another must acquire a
+missing property or revisit an ambiguous source. Cost-aware execution
+allocates work from the current evidence state and second-order
+action experience, then revises that allocation as evidence changes.
 
-The reason is that different query patterns have different cost profiles. A simple fact lookup (\point{}) retrieves one stored value and never benefits from repeated sampling, while an aggregation (\agg{}) or comparison (\cmp{}) over multiple records genuinely reduces variance with additional samples. Treating all queries the same, as uniform self-consistency does, wastes budget on easy queries and cannot reallocate it to hard ones.
+\subsection{Query-Specific Budget Allocation}
+\label{subsec:new-budget}
 
-The executor addresses this through two complementary mechanisms: it allocates different budgets to different query patterns (Section~\ref{subsec:budget}), and it stops spending early when an individual query's answer is already stable (Section~\ref{subsec:shortcircuit}). The two act on different dimensions and their savings compose.
-
-\stitle{Cost Model.}
-\sys{} issues LLM calls on both the write path (catalog extraction) and the read path (query answering). Write-path cost is paid once per session and amortizes across queries. The executor targets read-path cost, which dominates. Under fixed per-pattern budgets $(K_{\point},K_{\agg},K_{\cmp})$, the total cost over a workload of $Q$ queries with pattern fractions $(p_{\point},p_{\agg},p_{\cmp})$ is
+An action is a bounded unit of evidence work: acquire a source-backed
+property, verify a disputed value, resolve a plan block, or check its result.
+Let $\tau(q)$ be the executed action sequence, with $\tau_j(q)$ its
+$j$th occurrence. In memory-side LLM calls,
 \begin{equation}
 \label{eq:cost}
-C \;=\; Q\cdot\bigl(p_{\point}K_{\point} + p_{\agg}K_{\agg} + p_{\cmp}K_{\cmp}\bigr).
+C(q)=C_{\mathrm{plan}}(q)+\sum_{j=1}^{|\tau(q)|}c(\tau_j(q)).
 \end{equation}
-A Uniform-$K{=}3$ reference sets $K_{\point}=K_{\agg}=K_{\cmp}=3$, so $C=3Q$.
+Each invocation is charged exactly once, including repeated actions.
+Semantic synthesis or validation by $g$ is an execution action, not free finalization.
+Acquisition and verification are not free write-path
+overheads. Deterministic reads, selection, and arithmetic use zero
+LLM calls but can still incur latency. Agent-side query formulation
+and final answer generation are accounted for separately in an
+end-to-end ledger.
 
-\subsection{Pattern-Aware Budgeting}
-\label{subsec:budget}
+The executor maintains evidence obligations for scope coverage, values,
+versions, bindings, and result checks.
+For the current snapshot of instantiated obligations $\Omega$, let
+$\ell(\Omega)$ be the unresolved fraction, with $\ell(\varnothing)=0$;
+conflicts leave a check
+unresolved. It is an observable evidence-gap diagnostic, not online
+accuracy or a calibrated error probability.
+Neither agreement nor an empty diagnostic after failed plan compilation
+certifies a result. Ambiguous compilation remains an unresolved check.
 
-To avoid wasting LLM calls on queries that do not benefit from replication, the executor assigns a budget based on the query pattern, giving each pattern the budget its operator can use productively.
+An action's observed reduction compares the same pre-action set:
+$\Delta\ell(a)=\ell_{\mathrm{before}}(\Omega)-
+\ell_{\mathrm{after}}(\Omega)$.
+Newly discovered candidates add obligations to the next decision's
+snapshot, not to this comparison's denominator.
+Thus useful scope discovery is not penalized merely for exposing
+additional work. The executor then checks the expanded set before
+certifying a result or allocating the next action.
 
-Specifically, the executor sets $K_{\point}=1$ and $K_{\agg}=K_{\cmp}=3$. The asymmetry follows from what each operator computes. A \point{} query resolves a single stored fact: once $\textsf{(Alice, has-provider, Raiffeisen Basel)}$ is in the context, re-sampling can only re-read the same value, and one call is both necessary and sufficient. \agg{} and \cmp{} queries compose evidence across multiple records, as when the outdoor count must decide eight independent \texttt{yes}/\texttt{no} judgments, and there sampling genuinely reduces variance, so these patterns retain the full budget.
+For each executed action, $\Uu$ stores its context, obligation snapshot,
+observed reduction, and actual call cost. A context signature contains action
+kind, plan class, unresolved-check types, candidate count, dependency
+depth, and cache availability (all, some, or none). To estimate an available action's
+diagnostic reduction $\widehat{\Delta\ell}(a)$ and cost $\widehat c(a)$,
+the executor averages matched historical reductions and costs with one
+declared prior observation. Detailed signatures match these fields exactly.
+It backs off from the detailed signature
+to the same user's action-kind/plan-class history, then to the prior.
+Matching and backoff use these declared fields and order.
+These are predictions from executed actions, not counterfactual labels.
 
-Substituting these budgets into Eq.~(\ref{eq:cost}), the saving against Uniform-$K{=}3$ is $\Delta C=2p_{\point}Q$. On \membench{} with $p_{\point}=0.61$, this alone reduces $C$ from $900$ to $532$, a $40.9\%$ cut. The saving grows with the share of point queries and costs nothing in accuracy on the queries it economizes.
+The cold prior supplies the template's declared call count and half
+the fraction of unresolved checks it could discharge with available
+sources, or zero when none is available. This is an initial assumption,
+not a measured success rate; its weight decreases with matched experience.
+Each action declares an enforced maximum reservation $c_{\max}(a)$:
+$0\leq c(a)\leq c_{\max}(a)$, distinct from its predicted mean cost.
+An action that reaches its reservation returns its current evidence state.
 
-\subsection{Agreement-Based Early Stopping}
-\label{subsec:shortcircuit}
+From dependency-ready actions, the executor constructs a worklist
+$\mathcal A_+(q)$ in descending predicted net benefit
+$\widehat{\Delta\ell}(a)-\lambda\widehat c(a)$.
+Only positive-benefit actions that fit the remaining hard cap are admitted.
+The current additional-call budget is
+\begin{equation}
+\label{eq:new-adaptive-budget}
+K(q)=\sum_{a\in\mathcal A_+(q)}c_{\max}(a)
+\ \leq\ K_{\max}(q)-C_{\mathrm{spent}}(q).
+\end{equation}
+Here finite $K_{\max}(q)\geq0$ caps all memory-side calls, including planning, and
+$C_{\mathrm{spent}}$ records calls already paid.
+Planning is invoked only under a reservation that fits the cap; otherwise
+the system reports the unresolved plan rather than overspending.
+$\lambda\geq0$ prices diagnostic reduction against calls.
+The worklist, $C_{\mathrm{spent}}(q)$, and $K(q)$ refer to the current
+decision, not fixed query-wide constants. After each action, unused reservations are released
+and the worklist is rebuilt from the new evidence state.
 
-To further reduce cost on the harder query patterns, the executor detects when additional sampling is unnecessary for a specific query. Some \agg{} and \cmp{} instances are easy but indistinguishable from hard ones before execution. The executor recovers this distinction at no extra cost by reading the agreement between samples it was going to draw anyway.
+\subsection{Selective Refinement and Experience Feedback}
+\label{subsec:new-value}
 
-Specifically, within the \agg/\cmp{} budget, the executor draws two independent samples $p_1,p_2$ and measures their token F1 $\mathrm{agree}(\cdot,\cdot)\in[0,1]$. If the two samples agree above a threshold $\theta$, the query is considered settled and no third sample is drawn:
+When admissible actions exist, the next action maximizes predicted net benefit:
 \begin{equation}
 \label{eq:short}
-\hat{a} \;=\; \begin{cases}
-p_1, & \mathrm{agree}(p_1,p_2)\geq\theta, \\
-\mathrm{Majority}(p_1,p_2,p_3), & \text{otherwise.}
-\end{cases}
+\begin{aligned}
+a^*&\in\argmax_{a\ \mathrm{admissible}}
+ \{\widehat{\Delta\ell}(a)-\lambda\widehat c(a)\},\\
+\mathrm{continue}&\ \Longleftrightarrow\
+ \widehat{\Delta\ell}(a^*)>\lambda\widehat c(a^*).
+\end{aligned}
 \end{equation}
-On Alice's outdoor query, both samples enumerate the same eight events and emit \texttt{Answer: 3}, so the agreement is high, the third call is skipped, and the query costs two calls, saving the third. Had one sample returned \texttt{3} and the other \texttt{4}, the low agreement would have triggered the third call, spending it where it can change the outcome. We fix $\theta=0.6$ for all benchmarks and all backbones.
+If no action is admissible, execution stops.
+Admissibility requires available inputs and a reservation that fits
+the remaining cap. A prerequisite sequence with delayed benefit can
+be evaluated as one bounded bundle, charging every invocation within it.
+A bundle's first action must be ready, with later inputs supplied by
+earlier actions in the bundle. The rule is a local, experience-based decision, not a claim of globally
+optimal scheduling or guaranteed accuracy improvement.
+Free deterministic work is not repeated on unchanged inputs.
+Repeated semantic judgments consume calls from the hard cap.
+With a finite plan and source snapshot, these rules prevent an
+unresolved gap from inducing an unlimited retry loop.
 
-Combined with pattern-aware budgeting, early stopping drives the total cost on \membench{} from $532$ to $444$, a further $16.5\%$ cut and $50.7\%$ overall against the Uniform-$K{=}3$ reference.
+Execution reuses verified subresults and spends only on unresolved
+work. Semantic disagreement can trigger another judgment; shared
+unsupported evidence calls for source acquisition instead of voting.
+If an input changes, only its dependent descendants are invalidated
+and recomputed. Exhausting the cap or declining further work does not
+convert a gap into a supported result: $\sigma$ remains partial or
+unknown as appropriate.
 
-\stitle{Remarks.}
-Self-consistency~\cite{sc} treats disagreement among samples as noise to average away under a fixed budget. The same disagreement, however, also carries information about the query: when two samples agree, the query is easy for the current model and grounding, and a third sample is unlikely to change the outcome. Agreement thus becomes a stopping rule. Adaptive-Consistency~\cite{adaptiveconsistency} and early-stopping self-consistency~\cite{escsc} exploit the same observation within a single query, halting once drawn answers converge, but they must draw at least two samples before any decision is possible. Because \sys{} knows the query pattern, it can go further: a point lookup cannot benefit from a second sample at all, so the extra sample is skipped entirely for the majority of the workload. The two mechanisms, pattern-aware budgeting across patterns and agreement-based stopping within a pattern, therefore save from disjoint slices and their savings compose.
+\begin{memoryexample}{Example 3: reuse completed work, resolve the new gap}
+\textbf{Warm query.} Alice again compares the outdoor activities.
+Reuse verified settings and durations: $4>3$, with $K(q)=0$ additional
+memory-side calls. Agent answer generation is separate.
+
+\smallskip
+\textbf{New gap.} A closed March 23 session says,
+\emph{We planned an outdoor picnic, but rain changed our plans.}
+Its follow-up says, \emph{We ate inside River Cafe instead.}
+The two descriptions refer to one outing, not two activities.
+Alice's March 24 count needs its actual occurrence and setting,
+not merely the planned picnic.
+
+\smallskip
+\textbf{Selective action.} Verify the outing and acquire its actual setting when
+predicted benefit exceeds cost, charging extraction/verification calls.
+Reuse the three earlier judgments; update only the new outing:
+$1+0+1+0=2$.
+
+\smallskip
+\textbf{Unavailable evidence.} Without the follow-up, the closed
+four-candidate scope supports $[2,3]$, not an exact count.
+Repeating the planned-picnic fragment cannot resolve this gap.
+\end{memoryexample}
+
+Query totals $C(q)$, action outcomes, and diagnostic changes update
+$\Uu$ independently of whether the agent supplies a use report.
+Validated reported use updates the
+fact-priority statistics in Section~\ref{subsec:new-experience}.
+The records distinguish cold acquisition from warm reuse and guide the
+next query's priorities and budget. Acquired facts evolve content;
+remembered use, outcomes, and cost evolve memory operations.

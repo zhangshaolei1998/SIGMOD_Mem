@@ -1,38 +1,134 @@
 %!TEX root = ../main.tex
-\section{System Overview}
+\section{Architecture}
 \label{sec:overview}
 
 \input{figures/tex/framework_overview}
 
-This section traces one query through \sys{} end to end, so that the roles of the three components are clear before any is specified in detail. Figure~\ref{fig:framework_overview} shows the architecture: the framework routes each query to a specialized operator, and two optimization layers refine what the operator reads and what it costs.
+\sys{} retains User--Agent conversation history in raw sessions and
+Agent--Memory experience in second-order memory. First-order facts
+connect them: queries extract facts from raw sessions, and fact use
+produces operational experience. User knowledge remains distinct from
+experience about serving the user.
 
-\stitle{Query Life Cycle.}
-Given a query $q$, \sys{} produces an answer in four steps.
-%
-\begin{enumerate}[leftmargin=*]
-\item \textbf{Plan.} Route $q$ to one of three patterns (\point{}, \agg{}, or \cmp{}) by matching keywords, with no LLM call (Section~\ref{subsec:planner}).
-\item \textbf{Ground.} Assemble relevant catalog entries into a context block. The second-order memory promotes entries that have been useful for this user in the past (Section~\ref{subsec:feedback}).
-\item \textbf{Execute.} Issue LLM calls under the operator's template. The cost-aware executor decides how many calls the query pattern warrants and stops early when two samples agree (Sections~\ref{subsec:budget} and~\ref{subsec:shortcircuit}).
-\item \textbf{Log.} Record which catalog entries appeared in the answer, so that the next query benefits from updated rankings (Section~\ref{subsec:log}).
-\end{enumerate}
+\subsection{From Sessions to Facts to Use Experience}
+\label{subsec:new-state}
 
-\stitle{End-to-End Example.}
-We illustrate the full pipeline on Alice, a user whose agent has recorded six months of conversations covering banking, travel, and daily activities.
+For each user, the memory state is
+\begin{equation}
+\label{eq:new-state}
+\Mm=(\Hh,\Ff,\Uu).
+\end{equation}
+The progression $\Hh\rightarrow\Ff\rightarrow\Uu$ links conversations,
+derived facts, and experience of using those facts; it is not an
+execution order. $\Uu$ also retains execution outcomes and cost when no
+fact is returned. All three levels are isolated by user.
 
-\etitle{Step 1: Query Planning.}
-Alice asks \emph{``How many of my events involve outdoor activity?''} The planner detects the quantifier phrase ``how many'' and routes the query to \agg{} (aggregation). No LLM call is needed.
+\runin{Raw sessions: User--Agent history}
+$\Hh=(s_1,\ldots,s_n)$ is an append-only sequence of closed,
+timestamped conversations, including questions $Q$, answers $A$, and
+speaker identities. Sessions remain available, including details that
+no previous query needed. Agent text retains its speaker identity:
+suggestions and generated claims are not independent user evidence.
+They require user confirmation or lineage to already grounded assertions;
+storing an answer does not create new source support.
 
-\etitle{Step 2: Grounding.}
-The \agg{} operator retrieves candidate event entities from the catalog. Because Alice has already asked six questions in this session, the second-order memory has observed that her calendar and activity events frequently appear in accepted answers. These entries are promoted to the top of the candidate list, while unread travel sessions are ranked lower.
+\runin{First-order memory: what the agent knows about the user}
+$\Ff$ contains source-backed assertion records $f$, normally with a
+$(\mathrm{subject},\mathrm{predicate},\mathrm{object})$ payload.
+Each record has a stable fact-version ID, source spans, and temporal
+qualifiers; equal triples with different qualifiers remain distinct.
+Event identifiers connect facts about the same activity across sessions.
+Extraction is query-driven: an organizer query can acquire an event's
+organizer, while a later comparison acquires its duration from the same
+source. Facts accumulate as the workload reveals what is needed.
 
-\etitle{Step 3: Execution.}
-The operator enumerates eight candidate events and evaluates each against the predicate ``involves outdoor activity'' with an explicit yes/no judgment. It produces the count $3$. The cost-aware executor draws two independent samples; both return $3$, so it skips the third sample and commits the answer after two LLM calls.
+\runin{Second-order memory: Agent--Memory experience}
+$\Uu$ retains memory-query context, returned evidence, support outcomes,
+action costs, and validated credit for agent-reported fact use.
+It distinguishes exposure from reported consumption and stores both
+execution records and statistics derived from them. Repeated organizer
+requests teach the system which event links to prioritize and reuse.
+The corresponding costs teach it where another execution is useful.
 
-\etitle{Step 4: Logging.}
-The three events that contributed to the answer (\eg \textsf{hiking at Uetliberg}, \textsf{cycling by the Rhine}, \textsf{picnic in Bruderholz}) are recorded in Alice's workload log. The next time a query touches these entities, they will be retrieved faster.
+\begin{memoryexample}{Example 1: from a conversation to operational experience}
+\textbf{1. Raw conversations.} Alice says on March 2,
+\emph{Ava arranged our 4-hour outdoor hike at Pine Trail.}
+On March 9, \emph{Ben booked my 2-hour indoor pottery class.}
+On March 16, \emph{Cara arranged our 3-hour outdoor ride at Lake Park.}
 
-\medskip
-Had the same query been issued to a baseline that uses one generic pipeline, the system would scan all sessions uniformly, fail to isolate the eight relevant events, and miscount (the full-context baseline returns 5). \sys{} avoids this by routing the query to a specialized operator and grounding with workload-informed memory.
+\smallskip
+\pagebreak[4]
+\begin{minipage}{\linewidth}
+\textbf{2. The question determines extraction.} On March 17, Alice asks,
+\emph{Whom should I contact to repeat my March outdoor activities?}
+The agent requests March activities, settings, and organizers:
 
-\stitle{How the Three Components Interlock.}
-The three components are not independent. The executor cannot budget calls until the planner has named the query pattern. The operator cannot read a useful candidate set until the second-order memory has ranked the catalog. The second-order memory cannot update until the executor has committed an answer. Removing any one therefore degrades the other two, which Section~\ref{sec:experiments} confirms by ablation.
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+Activity ID & Setting & Organizer\\
+\texttt{hike-1} & outdoors & Ava\\
+\texttt{pottery-1} & indoors & Ben\\
+\texttt{ride-1} & outdoors & Cara\\
+\end{tabular}
+\end{center}
+\end{minipage}\par
+These six entries, together with a verified three-activity scope, support
+the response. The facts include
+\texttt{(hike-1, organizer, Ava)}. Unneeded durations remain in raw sessions.
+
+\smallskip
+\textbf{3. Retrieval differs from use.} The agent answers,
+\emph{Ava for the hike; Cara for the ride.}
+A complete use report credits all three settings, including pottery's
+exclusion, and the Ava/Cara links. Ben's organizer was returned but unused.
+Second-order memory records these IDs, context, and cost.
+Unused facts remain available.
+
+\smallskip
+\textbf{4. All three levels evolve.} The March 18 question about the
+longest outdoor activity induces a memory query that acquires durations,
+compares $4>3$, and resolves its organizer, Ava.
+Durations enrich $\Ff$; their use and acquisition cost enrich $\Uu$.
+The completed question/answer session is appended to $\Hh$ when it closes.
+\end{memoryexample}
+
+\subsection{How Content and Operations Evolve}
+\label{subsec:new-evolution}
+
+When $q$ arrives, its source snapshot is fixed and required evidence is
+checked against $\Ff$.
+Missing properties, links, versions, or population coverage identify
+which source regions must be examined. Newly acquired facts enrich
+$\Ff$ after verification. Acquisition reconciles identities, normalizes
+dates and units, and retains temporal versions. Relative dates use the source
+session's timestamp. Multiple valid objects can coexist; an explicit
+update to a single-valued property creates a new version rather than
+erasing its history.
+
+After execution, $\Uu$ records $q$'s context, returned fact-version IDs
+$E^r$, support diagnostics, and costs. $E^r$ includes the facts exposed
+in $m$'s evidence bundle, not every fact inspected internally.
+A complete agent use report identifies $q$ and its consumed fact or
+derived-result IDs.
+For a consumed result, memory expands its derivation to the supporting
+facts, including negative evidence that excludes a candidate from a
+count. Every such supporting fact is included in $E^r$.
+Membership, lineage, and source/version checks against $q$'s snapshot validate the resulting
+$E^u\subseteq E^r$;
+each fact receives at most one use credit per query, with idempotent
+updates by query and fact-version ID. Returning a result
+alone does not imply use, and credit does not establish a causal
+contribution to answer correctness. Incomplete or missing reports leave
+use unobserved; execution records are retained independently.
+A closed User--Agent session is appended to $\Hh$. Later queries
+revalidate cached scope and version checks affected by the new session;
+old assertions and their provenance are not erased.
+
+Figure~\ref{fig:framework_overview} shows how this experience affects the
+next query. For performance, it guides evidence selection and reuse
+within a dependency-specific pipeline
+(Section~\ref{sec:framework}). For efficiency, it guides the amount
+and location of additional execution
+(Section~\ref{sec:executor}). The operations evolve through their
+priorities, reuse decisions, and budgets; source evidence continues to
+determine what a supported result can assert.

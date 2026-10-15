@@ -1,0 +1,133 @@
+方法重写说明（2026-10-14）
+
+当前交付范围（按用户后续指示更新）
+权威稿为仓库根目录 main.tex，直接在原完整论文的 main.tex / secs / figures 上修改。
+方法现在只有三章：Architecture、For Performance、For Efficiency。
+secs/05secondorder.tex 已作为 performance 的子节引入，不再独立成为第四章。
+全部 tables/*.tex 与原版本逐字节相同；保留原有实验数值、结果分组和对照配置。
+rewrite/methods.tex 是此前独立草稿，不再作为这次交付入口。
+原完整稿的源码备份位于仓库外 ../original-manuscript-backup/。
+build.sh 编译根目录 main.tex，运行 pdflatex / bibtex / pdflatex / pdflatex，
+中间文件存放在 build/，最终 PDF 同步到根目录 main.pdf。
+便携 pdflatex 安装在仓库外 ../.tools/TinyTeX/。
+题目：MemCatalog: A Continually Evolving Memory Management System for LLM Agents。
+核心：内容积累让 Agent 更懂用户；事实使用和成本经验让 Memory 的操作持续进化。
+第 2 节不再拆分小节；第 4、5 节各两个小节。删除无后续用途的总目标式和包装式。
+公式 1 为单行接口；黑框仅用于贯穿示例，示例不跨页。
+Figure 1 为彩色例子；Figure 3 左窄右宽，User / Agent / Retrieved Memory 纵向排列，
+右侧突出三层状态及 performance / efficiency，曲线表示跨区域交互和反馈。
+以下第六节的重新评测建议仅为后续研究建议，本次不改实验数值。
+
+一、全篇主线
+Question Q -> Agent -> Memory Query q -> Memory -> Retrieved Memory m
+-> Agent -> Answer A -> User。
+返回 m=(结果 v，支撑事实 E，支持状态 sigma)，再记录 Agent 实际采用了哪些事实。
+一次 Question 可以触发多个 Query。原始会话在 session 结束时写入 H。
+所有 Agent 自己生成的内容保留说话者身份；建议或推测不能自动当作用户事实。
+
+持久状态只有三类：M=(H,F,U)。
+H：原始会话，保留尚未被任何查询需要的证据。
+F：一阶事实，Query 暴露信息需求后按需提取、验证、规范化并保存。
+U：二阶使用经验，保存一阶事实被检索、被采用、支持检查与执行成本的经验。
+F 让 Agent 更了解用户；U 让 Memory 更了解这个用户的信息需求与服务代价。
+
+二、从参考文章借鉴的组织逻辑
+参考 PDF 的重点是：先给具体原始资料和递进 Query；每次 Query 不仅得出结果，
+还使持久状态增加可复用的知识；用需求、状态增量和具体例子解释公式。
+新稿沿用这个讲述方法，但不引入 universal relation、schema 演化或 DBMS 类比。
+同一组 hike / pottery / ride 会话贯穿结构、三条执行管线和预算分配。
+具体主线：3 月 2 日徒步 4 小时，Ava 组织；3 月 9 日室内陶艺 2 小时，Ben 组织；
+3 月 16 日户外骑行 3 小时，Cara 组织。3 月 17 日联系人问题提取 setting/organizer
+六条事实，使用三个 setting 和 Ava/Cara 链接，Ben 链接召回但未使用。
+3 月 18 日最长户外活动问题再提取 duration，比较 4 > 3，并绑定 hike-1 -> Ava。
+不同候选的组织者不同，避免绑定错误却碰巧返回相同答案；先缓存事实并不等于二阶创新。
+二阶创新在于保留 use/cost 对后续优先级和预算的影响。先验 a=b=1、2/3 与 1/3
+只用于说明 3 月 17 日查询刚结束时的统计，不是评测参数或数据。
+成本示例加入 3 月 23 日野餐因雨转入咖啡馆的两段对话：仅处理新事件的缺口，
+不重复判断原来三个活动；若后续证据不在历史中，则返回 2--3 的部分支持。
+示例一律使用黑色四边框、白底文字；事实、计算与记忆更新都可对照原始会话核查。
+示例中的 2、4 小时、3 小时和预算是构造示例，不是评测数据。
+
+三、为什么不再用 POINT / AGGREGATE / COMPARE
+原三类按表面任务列举，比较与聚合重叠，多跳关系没有清晰位置。
+新三类按证据请求的依赖结构定义 P=(R,D,g)：
+Direct：没有回答依赖且为原子的单事实请求，直接返回所需值。
+Parallel：没有回答依赖但非原子，独立取得候选证据再计数、比较、排序或汇总。
+Dependent：一个信息目标的输出绑定后续请求的实体、属性或时间，即 D 非空。
+分类按 D 空 / 非空，再按 atomic / non-atomic 划分，互斥且覆盖有限无环计划。
+完整计划允许递归嵌套，各子请求也遵循同一划分。
+“最长户外活动的组织者”是 Dependent：先 Parallel 选活动，再 Direct 取组织者。
+人口展开及其归约视为一个聚合操作，不把此内部顺序误作信息目标间的依赖。
+不能把这个命题扩张成“任意自然语言都必然被正确分类/回答”。
+
+四、二阶 Memory 的技术变化
+从 session popularity 改成 fact 的上下文使用经验。
+分别记录 exposed/retrieved 和 actually used；使用率有先验平滑。
+Agent 报告使用且有来源支持的事实每个 query 计一次 use；确定性计算的支撑事实同理。
+保证 0 <= n_used <= n_retrieved；缺失 use report 不计 use，不引入额外的连续 credit 参数。
+计数中的否定候选同样是支撑，不能只从最终 Answer 文本反推使用。
+无法取得 use report 时，只计 exposure，不能把所有召回项视为 useful。
+grounding 用当前相关性乘上下文使用率排序，并保留新事实探索。
+完整人口集合不能仅保留热门 top-k；预算不足时返回 partial。
+不声称经常采用等价于正确，不声称无偏，不声称随 query position 必然变好。
+上下文和执行统计需要单独索引；若保留全部 trace，空间会随工作负载增长。
+若后续想写有限空间界，必须先给定上下文数和 trace 保留策略。
+
+五、动态成本执行
+不设置 K_Direct=1、K_Parallel=3 这类常量。
+K(q) 根据当前缺口、候选数量、依赖深度、冲突、已有事实和 U 中历史成本/效果估计。
+目标是预测证据风险 + lambda * 成本，在资源上限以内决定执行轮数。
+每轮后比较进一步执行的预计风险改善与代价，只重执行不确定块。
+有关联的多步行动要作为 action bundle 评估，避免单步收益为零就过早退出。
+已验证的算术可以不额外采样；证据仍有歧义的直接检索也可能需要更多工作。
+成本完整记入 planning / acquisition / verification / execution。
+Agent 最终 Answer 的生成成本另外计入 end-to-end 指标。
+source-grounding/coverage 诊断是可观察代理，不能冒充线上 gold correctness。
+agreement 只比较规范化值，而且不能修复共享错误事实；必要时重新读原始来源。
+停止规则证明只适用于条件期望准确时的局部 risk+cost 目标，不宣称全局最优。
+
+六、需要配套调整的全篇内容与数据
+题目、摘要、Introduction：统一为 memory management；贡献改为三层架构、
+依赖计划与二阶经验驱动查询、动态预算；移除 DBMS-style/self-tuning-index 类比。
+Preliminaries：明确 Q/A 与 q/m、用户隔离、时间范围、raw/fact/usage 三类状态。
+Overview / 图：按需求产生 -> 获取事实 -> 按计划执行 -> Agent 使用 -> 二阶更新绘制。
+参考 scientific-schematics 的布局/可读性指南，用原生 TikZ 矢量实现；未安装或调用
+其需要第三方 API 的位图生成器。蓝色为性能/证据，橙色为效率，绿色虚线为经验。
+https://github.com/K-Dense-AI/scientific-agent-skills/blob/main/skills/scientific-schematics/references/best_practices.md
+方法章节：直接使用本稿的三章，不再重复 catalog/index/MVCC 的数据库映射。
+实验主表：旧 accuracy 和模型比较可以保留为旧方法档案，但不能直接算作新方法结果。
+新方法的最终 accuracy 必须重跑同一数据与 Agent 配置，并报告支持状态和样本数。
+per-class 表：必须按新计划重新标注/统计；不能把旧 POINT/AGG/COMPARE 数字改名迁移。
+routing 表：需独立标注计划树或 root 类，评估误分类、遗漏依赖、scope 错误及解析成本。
+ablation 表：改为去除 query-driven acquisition、second-order use attribution、
+contextual usefulness、dependency composition、dynamic allocation、selective re-execution。
+cost 表：同一 accuracy 或证据质量目标下比较 fixed uniform / class-fixed / dynamic。
+报告实际调用、输入输出 token、规划与提取成本、warm/cold 区分及最后的 Agent 调用。
+scaling 表：单独报告人口闭合扫描的开销；不再无条件宣称读成本独立于历史大小。
+重复 Query 与位置学习：控制 new topic、随机顺序、空 U、事实缓存等混淆变量。
+预算估计：报告 diagnostic 与实际正确率的关系、历史稀疏时的回退、校准误差，
+以及 1、2、... 次执行的实际观测；未执行的次数没有反事实标签。
+case study：同时保存 source spans、事实增量、完整 plan、used facts、执行成本与停止原因。
+原仓库只有四个 benchmark 的逐题 records，没有新计划、fact-use 或成本 trace。
+这些 records 不能推出新分类准确率、动态预算节省率或二阶 fact-use 的消融收益。
+本稿不填写未经重新评测的 accuracy、50.7% 节省率或新预算超参数数值。
+
+七、待实现的关键接口
+Memory.Query(q) -> (v, supporting_fact_ids, status, unresolved_obligations)
+Agent.ReportUse(query_id, used_fact_ids, support_diagnostics)
+Fact.Acquire(query_requirements, source_scope, existing_fact_ids)
+Fact.Merge(verified_facts, identity_links, temporal_qualifiers, source_spans)
+Plan.Parse(q) -> finite plan + bindings + required/optional dependencies
+Plan.Validate(plan) -> type/scope/acyclicity checks
+Usage.Update(fact_exposures, fact_uses, source_support_credit, context)
+Execution.Update(context, action, actual_cost, observed_risk_change)
+Execution.Allocate(query, evidence_state, usage_state, remaining_resource_cap)
+
+八、查阅来源
+用户提供的 The_Evolving_Universal_Relation_Model.pdf（6 页，Nan Tang / Haixun Wang）：
+query 引出需求、持久状态增量、贯穿示例的写法；出版年份在文件中未确认。
+Mem0 原文：https://arxiv.org/abs/2504.19413
+检索 query / memory / evidence 的常用术语；不将其抽取与更新机制归为本方法首创。
+MemR3 原文：https://arxiv.org/abs/2512.20237
+retrieval query 与返回 evidence 的区分、已有的迭代检索研究背景。
+新方法的性能优势和新颖性仍需与这些已有机制逐项比较并以实现与实验支持。

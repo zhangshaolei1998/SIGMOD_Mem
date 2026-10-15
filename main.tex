@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% MemCatalog: A DBMS-style Memory Management System for LLM Agents
+%% MemCatalog: A Continually Evolving Memory Management System for LLM Agents
 %% ACM SIGMOD submission (acmart sigconf)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -26,8 +26,9 @@
 \input{_commands}
 
 \begin{document}
+\raggedbottom
 
-\title{\sys{}: A DBMS-style Memory Management System for LLM Agents}
+\title{\sys{}: A Continually Evolving Memory Management System for LLM Agents}
 
 \author{Anonymous Author(s)}
 \affiliation{%
@@ -40,7 +41,28 @@
 \renewcommand{\shortauthors}{Anonymous Author(s)}
 
 \begin{abstract}
-Large Language Model (LLM) agents accumulate interaction histories that grow to hundreds of thousands of tokens per user, yet current memory systems store this data but do not manage it: every question, whether a simple fact lookup or a count across multiple records, is served by the same retrieval pipeline. This leads to two limitations: the system fails systematically on complex queries that require aggregation or comparison, and it wastes LLM calls on easy queries that do not need them while never learning which memories are useful. We introduce \sys{}, a memory management system for LLM agents that addresses three challenges of managing agent memory. (i)~\textbf{Architecture.} \sys{} organizes sessions into a typed catalog, routes each query to one of three patterns (point lookup, aggregation, or comparison) using keywords alone, and dispatches it to a specialized operator, with no LLM call needed for routing. (ii)~\textbf{Performance.} A \emph{Second-Order Memory} logs which catalog entries contribute to correct answers for each user and promotes useful entries in subsequent queries, forming a workload feedback loop that improves accuracy over time. (iii)~\textbf{Efficiency.} A \emph{Cost-Aware Executor} assigns different LLM call budgets to different query patterns and stops early when two samples agree. Across eight long-term memory benchmarks, \sys{} matches or improves the strongest prior memory system on every one, by an average of $2.6$ points and by up to $5.6$ points on \lmes{}. On \membench{} it further reduces LLM calls by $50.7\%$ relative to a Uniform-$K{=}3$ reference while attaining higher accuracy.
+Long-term LLM agents need memory that evolves both its content and its
+operations. We introduce \sys{}, a continually evolving memory management
+system with three levels. Raw sessions accumulate closed User--Agent
+conversations. First-order memory acquires source-backed user facts on
+demand. Second-order memory retains Agent--Memory experience: returned
+evidence, validated use credit, and execution outcomes/cost. First-order
+facts help the agent understand the user; second-order experience helps
+memory understand how to serve the user. For performance, single-fact
+retrieval, independent composition, and dependent composition partition
+normalized finite acyclic evidence plans and execute with
+experience-guided grounding. For efficiency, current evidence gaps and
+historical action outcomes determine a query-specific call reservation
+and whether further work is worthwhile. Unmet evidence obligations
+remain explicit when execution stops. The prototype evaluation covers
+eight long-term memory benchmarks. Its reported scores match or improve
+the strongest evaluated prior memory system on every benchmark, by an
+average of $2.6$ points and up to $5.6$ points on \lmes{}.
+On \membench{}, the reported configuration uses $50.7\%$ fewer read-path
+LLM calls than a Uniform-$K{=}3$ reference while attaining higher accuracy.
+These measurements test prototype evidence processing, workload-guided
+access, and selective execution; finer routing, fact-version credit,
+and action-value forecasts require targeted evaluation.
 \end{abstract}
 
 %% CCS concepts. Generated from https://dl.acm.org/ccs.
@@ -74,8 +96,8 @@ Large Language Model (LLM) agents accumulate interaction histories that grow to 
 \ccsdesc[300]{Computing methodologies~Natural language processing}
 \ccsdesc[100]{Computing methodologies~Multi-agent systems}
 
-\keywords{Agent memory, query optimization, large language models,
-  self-tuning systems, cost-based optimization}
+\keywords{Evolving agent memory, memory operations, second-order memory,
+  query-driven facts, cost-aware execution}
 
 \maketitle
 
@@ -84,7 +106,6 @@ Large Language Model (LLM) agents accumulate interaction histories that grow to 
 \input{secs/02preliminaries}
 \input{secs/03overview}
 \input{secs/04framework}
-\input{secs/05secondorder}
 \input{secs/06executor}
 \input{secs/07experiments}
 \input{secs/08related}

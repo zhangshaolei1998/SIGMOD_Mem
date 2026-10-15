@@ -1,0 +1,1288 @@
+% New, standalone full manuscript. Original manuscript files remain untouched.
+% The empirical section distinguishes archived prototype runs from the revised
+% mechanisms, whose implementation and matched evaluation are still required.
+\documentclass[10pt,twocolumn]{article}
+\usepackage[letterpaper,margin=0.75in,columnsep=0.25in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs,array}
+\usepackage{framed}
+\usepackage[hidelinks]{hyperref}
+\setlength{\emergencystretch}{2em}
+\setlength{\parindent}{1em}
+\setlength{\parskip}{2pt}
+\newcommand{\sys}{MemCatalog}
+\newcommand{\Hh}{\mathcal{H}}
+\newcommand{\Ff}{\mathcal{F}}
+\newcommand{\Uu}{\mathcal{U}}
+\newcommand{\Mm}{\mathcal{M}}
+\newcommand{\ret}{\textsc{Retrieve}}
+\newcommand{\red}{\textsc{Reduce}}
+\newcommand{\comp}{\textsc{Compose}}
+\newcommand{\runin}[1]{\smallskip\noindent\textbf{#1.}\ }
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Definition}
+\newenvironment{memoryexample}[1]{%
+  \def\FrameCommand{\fboxrule=0.7pt\fboxsep=6pt\fbox}%
+  \begin{framed}\small\noindent\textbf{#1}\par\smallskip
+}{\end{framed}}
+
+\title{\sys: Query-Driven Facts and Second-Order Memory\\
+for LLM Agents}
+\author{Anonymous Author(s)}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+An agent's conversation history contains more information than any fixed
+collection of extracted memories can anticipate. Moreover, knowing facts
+about a user does not reveal which facts that user's agent needs, how they
+should be combined, or how much computation a memory query deserves.
+\sys{} addresses these problems with three coupled forms of persistent
+state: raw sessions preserve the evidence, first-order memory acquires
+reusable facts as queries reveal a need for them, and second-order memory
+remembers how those facts were retrieved and used. A dependency-aware
+planner expresses memory queries through evidence retrieval, reduction,
+and composition, each with an explicit execution pipeline. An
+experience-guided executor allocates computation to individual queries
+and revises that allocation as evidence and uncertainty change. Each
+interaction therefore improves both the agent's knowledge of the user
+and the memory system's knowledge of how to serve that user. We specify
+the architecture, the three recursive pipelines, and a sequential
+risk--cost decision rule. An audit of 2,261 archived records establishes
+the empirical starting point of the released prototype; these records
+are distinguished from the evaluation still required for the revised
+fact-use and budget mechanisms.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:new-introduction}
+
+An LLM agent serving a user over many conversations needs to recover
+facts that its current context no longer contains. Those facts range
+from a single preference to a history of activities, changing plans,
+and relationships between people and events. Long-term conversation
+benchmarks show that recalling such information involves information
+extraction, temporal reasoning, and reasoning across sessions, rather
+than one uniform retrieval task~\cite{locomo,longmemeval}. The central
+problem is how a memory system acquires the right facts, combines them
+for a particular query, and improves its service as the user continues
+interacting with the agent.
+
+Existing systems provide useful mechanisms for this problem. MemGPT
+manages information across memory tiers~\cite{memgpt}; Mem0 extracts and
+updates salient facts~\cite{mem0}; Zep preserves temporal relationships
+in a knowledge graph~\cite{zep}; and A-MEM develops linked memory
+notes~\cite{amem}. Retrieval controllers such as MemR$^3$ explicitly
+refine retrieval and track evidence gaps~\cite{memr3}. These mechanisms
+establish that memory construction and access can be adaptive. Our
+question is how to connect \emph{query-driven fact acquisition},
+\emph{experience of using those facts}, and \emph{allocation of
+computation} in one explicit memory interface.
+
+\runin{The next useful fact cannot always be predicted at write time}
+A conversation can mention an activity's organizer, location, duration,
+and the user's motivation. An early query may require only its
+organizer; a later query may ask which activity lasted longest. A fixed
+summary can omit the duration, while extracting every possible fact
+upfront spends effort on information that may never be requested.
+The original history must remain available, and incoming queries must
+be able to reveal new factual requirements. Query-driven evolution,
+as articulated in EUR~\cite{eur}, suggests the useful principle that
+a query can both consume existing knowledge and leave behind new
+reusable knowledge. For agent memory, this principle concerns the
+user facts an agent needs over time.
+
+\runin{Facts do not remember how they were useful}
+A fact store describes the user, but does not by itself describe the
+user's memory workload. A frequently retrieved event might never
+contribute to an answer, whereas an otherwise obscure organizer fact
+might repeatedly connect relevant activities. Retaining this distinction
+requires a second form of memory: experience of which facts were
+exposed, which were actually used, and under what information need.
+Such experience can help prioritize future evidence work. It must be
+kept separate from the truth of a fact, because frequency of use does
+not establish source support.
+
+\runin{The required computation changes with the query}
+``Who organized my hike?'' selects a fact. ``How many outdoor events
+did I attend?'' must cover a population and decide a condition for each
+candidate. ``Who organized the longest outdoor event?'' must identify
+the event before retrieving its organizer. A single prompt over
+retrieved passages hides these different obligations. The memory
+system needs an explicit plan that reveals which facts to obtain,
+which values to reduce, and which intermediate results to connect.
+
+\runin{A plan label does not determine execution difficulty}
+Comparing two cached durations needs little work. Resolving a name
+shared by two people may require additional evidence even though it
+looks like a direct retrieval. A useful execution budget therefore
+depends on the individual query, its current evidence, and previous
+experience, then changes as the execution resolves or reveals
+uncertainty. Repeated samples are justified by their expected benefit,
+not by assigning one constant to every query in a class.
+
+We propose \sys{}, a memory management system built around these
+observations. Its state has three coupled components. Raw sessions
+preserve the conversational evidence; first-order memory acquires facts
+as queries require them; and second-order memory represents experience
+of acquiring, retrieving, and using those facts. The agent poses a
+memory query, receives a supported result and its evidence, and reports
+which facts contributed to its answer. This closes the loop from an
+information need to lasting knowledge and use experience.
+
+The architecture supports two technical mechanisms. For performance,
+queries are represented through evidence retrieval, reduction, and
+composition. Their recursive structure defines the required execution
+dependencies; contextual fact-use experience determines where evidence
+work begins. For efficiency, an executor predicts evidence risk and
+execution cost, allocates a query-specific budget, and spends additional
+work only where the predicted improvement warrants its cost. The
+controller reuses verified subresults and targets unresolved blocks.
+
+The contributions are: (1) a three-part memory model and an explicit
+agent--memory interface that make query-driven facts and second-order
+use experience complementary forms of persistent state; (2) a recursive
+plan language with disjoint root classes, three specified evidence
+pipelines, and a precise structural coverage claim; and (3) an
+experience-conditioned budget objective and a sequential stopping rule
+with a local risk--cost justification. Section~\ref{sec:new-experiments}
+audits the available prototype records and defines the matched
+evaluation needed to test the revised mechanisms. The archived runs
+do not by themselves establish their performance or cost benefits.
+
+\section{Preliminaries and Problem Formulation}
+\label{sec:new-preliminaries}
+
+\runin{Scope and source availability}
+We consider one agent serving one user over an evolving sequence of
+timestamped conversation sessions. A memory query can use only sources
+available when it arrives. Its requested temporal scope can be current,
+historical, or a specified interval. Facts stated later are excluded
+even if they would clarify an earlier event. External retrieval and
+creative generation can be agent tools, but are outside the memory
+query model studied here.
+
+\runin{Tasks and evidence obligations}
+A memory task specifies an information request and the evidence needed
+to support it. Direct requests need a supported fact and identity;
+population requests additionally need candidate coverage; relational
+requests need supported connections among subresults. A task can be
+unanswerable because the history lacks the evidence or because a finite
+execution budget has not recovered it. A response exposes these limits
+through its support status instead of assuming a closed-world fact store.
+
+\runin{Objective}
+For the $t$th question, the agent generates $A_t$ from $Q_t$ and the
+retrieved memories. With a held-out answer-quality function
+$\operatorname{Qual}$ and memory cost $C_t$, the design objective is
+\begin{equation}
+\label{eq:new-objective}
+\max\ \mathbb{E}\!\left[\sum_t
+       \bigl(\operatorname{Qual}(Q_t,A_t)-\lambda C_t\bigr)\right].
+\end{equation}
+Quality is measured against reference answers in evaluation; those
+answers are unavailable to the deployed system. The executor therefore
+uses observable evidence-risk diagnostics as a surrogate, as defined
+in Section~\ref{sec:new-efficiency}. Its predictions can be wrong and
+must be assessed against actual answer quality. Per-user experience
+can improve service, but monotone improvement is not an assumption of
+the model.
+
+\begin{table}[t]
+\centering\small
+\caption{The core notation. Uppercase user messages and lowercase memory
+messages distinguish the two interfaces.}
+\label{tab:new-notation}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Symbol & Meaning\\
+\midrule
+$Q,A$ & User question and agent answer\\
+$q,m$ & Memory query and retrieved memory\\
+$\Hh,\Ff,\Uu$ & Sessions, facts, use experience\\
+$P$ & Recursive memory query plan\\
+$E^r,E^u$ & Retrieved and used fact sets\\
+$\ell,C$ & Evidence-risk diagnostic and cost\\
+$K(q)$ & Query-specific execution budget\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\runin{Organization}
+Architecture defines the interface and the state transition.
+Performance specifies the plan language, second-order grounding,
+and three execution pipelines. Efficiency controls how much work those
+pipelines receive. The notation in Table~\ref{tab:new-notation} is reused
+throughout; facts, events, and attributes do not require separate
+families of sets.
+
+\section{Architecture}
+\label{sec:new-architecture}
+
+\sys{} is a memory management system for an LLM agent. Its architecture
+separates three things that evolve at different rates: what the user has
+said, which facts the agent has needed, and how those facts have helped
+the agent. This section defines the interface and the persistent state;
+Sections~\ref{sec:new-performance} and~\ref{sec:new-efficiency} explain
+how a query changes that state and how its execution is budgeted.
+
+\subsection{The Agent--Memory Interface}
+\label{subsec:new-interface}
+
+\runin{Question and answer; query and retrieved memory}
+We denote a user-facing \emph{question} and \emph{answer} by $Q$ and $A$,
+and an agent-facing \emph{memory query} and \emph{retrieved memory} by
+$q$ and $m$. A question expresses what the user wants; a memory query
+specifies what information the agent needs to answer it. The two may
+coincide for a factual question, but a recommendation can induce several
+queries about preferences, constraints, and past activities. The
+terminology follows the distinction between a retrieval query and the
+memories or evidence returned by a memory system~\cite{mem0,memr3}.
+The interaction is
+\begin{equation}
+\label{eq:new-interface}
+\begin{aligned}
+\mathrm{User}&\xrightarrow{\ Q\ }\mathrm{Agent}
+                    \xrightarrow{\ q\ }\Mm,\\
+\Mm&\xrightarrow{\ m\ }\mathrm{Agent}
+                    \xrightarrow{\ A\ }\mathrm{User}.
+\end{aligned}
+\end{equation}
+The agent issues queries and generates the final answer. The memory
+system supplies facts, computed results when requested, and their
+supporting evidence. It also receives a report of which supplied facts
+the agent used. The relevant user--agent exchange is subsequently stored
+as part of a raw session.
+
+\runin{A memory query has an evidence scope}
+The query $q$ contains an information request, an entity or event scope,
+and a temporal scope. Unless specified otherwise, its evidence is drawn
+from the user's history available when the query arrives. ``Where did
+I live in January?'' and ``Where do I live now?'' can refer to the same
+attribute while selecting different fact versions. A query requiring
+exhaustive coverage also identifies the population over which a result
+must be computed, such as all events in March.
+
+\runin{Retrieved memory is a supported result}
+We represent the response as
+\begin{equation}
+\label{eq:new-response}
+m=(v,E,\sigma),
+\end{equation}
+where $v$ is the requested value or evidence collection, $E\subseteq\Ff$
+contains the supporting first-order facts, and $\sigma$ indicates
+\texttt{supported}, \texttt{partial}, or \texttt{unknown}. Facts in $E$
+retain links to their source spans. A count is returned with its
+contributing events; a comparison with the values compared. When a
+requirement is unresolved, the response identifies the gap rather than
+turning a missing fact into a negative assertion. ``No event matched''
+requires coverage of the requested population; ``no matching event has
+yet been found'' does not establish that claim.
+
+\subsection{Three Coupled Forms of Memory}
+\label{subsec:new-state}
+
+\runin{The state}
+For one user, the persistent memory state is
+\begin{equation}
+\label{eq:new-state}
+\boxed{\Mm=(\Hh,\Ff,\Uu).}
+\end{equation}
+The paired roles are simple: $\Hh$ preserves \emph{conversations}, $\Ff$
+stores \emph{facts about the user}, and $\Uu$ stores \emph{experience of
+using those facts}. All state and updates are isolated by user. We omit
+the user subscript throughout.
+
+\runin{Raw sessions: the evidence that remains available}
+A session $s$ is a timestamped sequence of user and agent turns, and
+$\Hh=(s_1,\ldots,s_n)$ is the ordered session history. A closed session
+is retained verbatim. This preserves details that no previous query
+required and lets a later query revisit the original evidence. The
+author of a turn is part of its provenance: an agent's unsupported
+suggestion is not a fact about the user's activities or preferences.
+
+\runin{First-order memory: reusable facts that queries reveal}
+The fact memory $\Ff$ contains statements extracted from $\Hh$. A fact
+has the minimal semantic form
+\begin{equation}
+\label{eq:new-fact}
+f=(\mathrm{subject},\mathrm{predicate},\mathrm{object}).
+\end{equation}
+Each fact additionally has a stable identifier, source-span references,
+and temporal qualifiers. Events receive their own identifiers, so
+\texttt{(Alice, attended, hike-1)} and
+\texttt{(hike-1, date, 1 March)} refer to the same event across sessions.
+This representation supports properties and relations without
+introducing a separate symbol family for each fact type.
+
+Facts are acquired when a query needs them. An early query about an
+event's organizer need not extract every event duration or every
+preference mentioned in the history. A later query can reveal those
+requirements and enrich $\Ff$. This use of the query to acquire durable
+state is inspired by the query-driven evolution in EUR~\cite{eur}; here,
+the evolving state consists of user facts and their use experiences.
+
+\runin{Second-order memory: experience of using first-order memory}
+The second-order memory $\Uu$ represents how first-order facts serve
+this user's information needs. An experience distinguishes the facts
+\emph{retrieved} from the facts \emph{used}, records the query context,
+and associates execution outcomes and costs with that context. It can
+therefore learn that the user's travel questions usually need event
+dates and organizers, while preference questions use a different group
+of facts. These experiences concern facts already in $\Ff$; they do not
+add an unsupported belief about the user.
+
+This distinction gives the architecture two forms of adaptation.
+First-order memory improves \emph{what the agent knows about the user}.
+Second-order memory improves \emph{what the memory system knows about
+the user's memory needs}. A rarely retrieved fact can remain true, and
+a frequently used fact can still require source verification. Usefulness
+changes retrieval and computation priorities, while evidence determines
+whether a statement can be returned as supported.
+
+\begin{memoryexample}{Example 1: one history, three forms of state}
+\textbf{Raw sessions $\Hh$.}
+\par\texttt{S1, 2 March:} ``On 1 March I hiked outdoors on Pine Trail for four
+hours. Ava organized the hike.''
+\par\texttt{S2, 9 March:} ``On 8 March I took a two-hour indoor pottery
+class at Clay Studio. Ben organized it.''
+\par\texttt{S3, 16 March:} ``On 15 March I cycled outdoors around Lake
+Park for three hours. Ava organized that ride too.''
+\smallskip
+\textbf{First query.} $q_1$: ``Who organized my Pine Trail hike?''
+\par\textbf{New first-order facts.}
+\par\texttt{f1: (Alice, attended, hike-1)}
+\par\texttt{f2: (hike-1, location, Pine Trail)}
+\par\texttt{f3: (hike-1, organizer, Ava)}
+\par All three cite spans in \texttt{S1}. Durations are not needed yet.
+\smallskip
+\textbf{Retrieved memory.} $m_1$ returns \texttt{Ava}, supported by
+\texttt{f1--f3}. The agent answers the user and reports using these facts.
+\par\textbf{Second-order experience.} $\Uu$ remembers that this event
+identity and organizer were used in an organizer query, together with
+the observed verification outcome and execution cost.
+\end{memoryexample}
+
+\subsection{A Query Both Reads and Enriches Memory}
+\label{subsec:new-evolution}
+
+\runin{Demand, acquisition, and retention}
+Let $\operatorname{Need}(q,\Ff)$ identify evidence obligations not yet
+satisfied by the available facts. Obligations include missing properties,
+missing relational links, unresolved versions, and unexamined parts of
+a requested population. Query-driven acquisition is
+\begin{align}
+\label{eq:new-acquisition}
+\Delta\Ff &= \operatorname{Extract}\bigl(\Hh,
+                    \operatorname{Need}(q,\Ff)\bigr),\\
+\Ff^{+} &= \operatorname{Merge}(\Ff,\Delta\Ff).
+\label{eq:new-merge}
+\end{align}
+Extraction targets the unmet obligations and their source sessions.
+Merge canonicalizes entity and event identities, verifies source spans,
+normalizes dates and units, and retains reusable fact versions. Relative
+dates are interpreted using the source session's timestamp. Provenance
+and the source coverage of each extraction task are retained with the
+facts, so an identical task over an unchanged source can be reused.
+
+\runin{Versions preserve the user's history}
+Two values with the same subject and predicate need not be inconsistent:
+the user can visit multiple places or attend multiple events. Explicit
+updates to a single-valued property, such as a current home address,
+create temporally qualified versions. Historical queries select the
+appropriate version. Ambiguous or conflicting statements remain
+explicit until resolved; recency alone does not decide their truth.
+
+\runin{The two updates}
+For the $t$th memory query, acquisition and execution produce the
+retrieved memory; the subsequent use report updates second-order memory:
+\begin{align}
+\label{eq:new-cycle}
+(m_t,\Ff_t)&=\operatorname{Execute}
+       (q_t,\Hh_t,\Ff_{t-1},\Uu_{t-1}),\\
+\Uu_t&=\operatorname{Remember}
+       (q_t,E_t^{r},E_t^{u},\ell_t,c_t;\Uu_{t-1}).
+\label{eq:new-remember}
+\end{align}
+Here $E_t^{u}\subseteq E_t^{r}\subseteq\Ff_t$ are the facts used and
+retrieved, respectively; $\ell_t$ is an observable evidence-risk
+diagnostic and $c_t$ is measured memory-side execution cost. Used facts
+include facts cited by the agent and facts contributing to a requested
+computation. Until the agent supplies its use report, agent-level use
+credit remains pending. A completed user--agent exchange is appended
+to $\Hh$ when its session closes. A question can issue several memory
+queries and therefore induce several updates before one answer.
+
+\section{For Performance: Dependency-Aware Memory Querying}
+\label{sec:new-performance}
+
+Accurate memory access requires more than finding text similar to a
+query. Some requests can be satisfied by selecting facts, some must
+process a whole population, and others depend on the results of earlier
+subrequests. We organize query execution by these \emph{evidence
+dependencies}. Second-order experience guides which evidence to examine
+first, while the dependency structure specifies what evidence must
+ultimately be obtained and how it must be combined.
+
+\subsection{Three Plans with a Defined Coverage Boundary}
+\label{subsec:new-plans}
+
+\runin{Retrieval, reduction, and composition}
+The three plans differ in the computation required over evidence.
+\emph{Evidence retrieval} (\ret) obtains facts satisfying a direct
+information request. \emph{Evidence reduction} (\red) applies one
+operation to a collection of evidence, such as counting, ranking,
+comparing values, or summarizing events. \emph{Evidence composition}
+(\comp) combines subrequests whose outputs have to be connected, such
+as finding an event and then retrieving its organizer. Temporal and
+preference queries use these same plans with different fact and time
+constraints.
+
+\begin{definition}[Memory query plans]
+\label{def:new-plans}
+A plan is a finite, acyclic expression generated by
+\begin{equation}
+\label{eq:new-plan-grammar}
+\begin{split}
+P\ ::={}&\ \ret(r)\\
+       &\mid\ \red(g,P)\\
+       &\mid\ \comp(g;P_1,\ldots,P_d),\quad d\geq2.
+\end{split}
+\end{equation}
+Here $r$ is a scoped evidence request, and $g$ is an explicitly specified
+reduction or composition operation. The output of a subplan can bind
+an entity, event, or time in a later subplan. Each operation propagates
+supporting facts and unresolved obligations with its result.
+\end{definition}
+
+Permitted reductions include cardinality, sums, extrema, ordering, and
+source-backed summaries. Permitted compositions include identity-based
+linking, temporal linking, and evidence-backed synthesis of multiple
+subresults. A free-form generation prompt that hides an unspecified
+multi-step computation does not qualify as a plan. In particular, the
+plan must expose the facts and dependencies that its result needs.
+
+\runin{Classification follows the outermost computation}
+The planner parses $q$ into $P(q)$ and assigns its root:
+\begin{equation}
+\label{eq:new-route}
+\rho(q)=
+\begin{cases}
+\ret, &P(q)=\ret(r),\\
+\red, &P(q)=\red(g,P),\\
+\comp,&P(q)=\comp(g;P_1,\ldots,P_d).
+\end{cases}
+\end{equation}
+This makes the routing disjoint. A count over related records has a
+\red{} root with a \comp{} child; a request for the organizer of the
+longest event has a \comp{} root with a \red{} child. Nested plans are
+executed recursively, rather than forced into one flat template.
+
+\begin{proposition}[Structural coverage]
+\label{prop:new-coverage}
+Every plan in Definition~\ref{def:new-plans} has exactly one root class,
+and can be evaluated using the three pipelines below, provided its
+primitive requests and operations are supported.
+\end{proposition}
+\begin{proof}
+The three constructors in Eq.~\eqref{eq:new-plan-grammar} are distinct,
+so the outermost constructor determines one class. A retrieval is the
+base case. A reduction evaluates its child and then its specified
+operation. A composition evaluates its finite dependencies and then
+combines their outputs. Structural induction on the finite plan gives
+the result.
+\end{proof}
+
+The coverage claim concerns finite memory queries expressible through
+these constructors. It does not assert that a parser understands every
+natural-language utterance, that all evidence exists, or that an LLM
+extracts it without error. Unsupported operations and unresolved
+ambiguities yield a partial or unknown response. Requests for creative
+content or external world knowledge remain the agent's responsibility.
+The architecture thus has an explicit computational boundary instead
+of relying on the apparent completeness of three keyword categories.
+
+\begin{memoryexample}{Example 2: why the three plans cover different needs}
+\textbf{Retrieve.} ``Who organized the Pine Trail hike?''
+\par Select the organizer facts for the identified event.
+\smallskip
+\textbf{Reduce.} ``How many outdoor events did I attend in March?''
+\par Retrieve the event population; evaluate the outdoor condition;
+count distinct qualifying events.
+\par ``Which lasted longer, the hike or the ride?'' uses the same plan
+family with a maximum over two duration values.
+\smallskip
+\textbf{Compose.} ``Who organized the outdoor event that lasted longest?''
+\par First reduce outdoor events by duration; then bind the winning
+event in an organizer retrieval; compose the linked evidence.
+\end{memoryexample}
+
+\runin{A practical planner}
+The agent supplies a structured request when possible. A deterministic
+parser handles explicit attributes, scopes, and arithmetic operations;
+ambiguous dependencies require a structured model-assisted parse.
+Validation checks operation types, bindings, temporal scope, and
+acyclicity before execution. A parse can be repaired within the query's
+budget. Its LLM calls count as planning cost. Routing never uses a
+benchmark category or a reference answer, and the revised method makes
+no assumption that all planning is free.
+
+\subsection{Second-Order Experience Guides Grounding}
+\label{subsec:new-experience}
+
+\runin{Remember exposure and use separately}
+For a query context $z$, second-order memory maintains, for each fact,
+an exposure count $n^r(f,z)$ and a credited-use count $n^u(f,z)$.
+Contexts summarize the request's entities or topics, temporal intent,
+and evidence dependencies. Related contexts share a documented
+backoff rule; a new context begins with a neutral prior. The updates are
+\begin{align}
+\label{eq:new-use-update}
+n^r(f,z)&\leftarrow n^r(f,z)+\mathbf{1}[f\in E^r],\\
+n^u(f,z)&\leftarrow n^u(f,z)+w\,\mathbf{1}[f\in E^u],
+\end{align}
+where $0\leq w\leq1$ is the observed support credit for that use.
+Credit requires a valid source link and a supported use; optional
+explicit user feedback is stored separately. Samples agreeing on a
+claim do not by themselves establish its truth. If $E^u$ is unavailable,
+exposure can be recorded but use credit is not inferred from exposure.
+
+\runin{Contextual usefulness}
+With positive prior counts $a,b$, the estimated usefulness is
+\begin{equation}
+\label{eq:new-usefulness}
+u(f\mid q,\Uu)=
+\frac{a+n^u(f,z(q))}{a+b+n^r(f,z(q))}.
+\end{equation}
+This is a smoothed use ratio conditional on exposure, not a probability
+that the fact is true. A fact repeatedly retrieved but never used loses
+priority; a fact used in relevant contexts gains it. New facts retain
+nonzero priority. Source validity and temporal eligibility are checked
+before ranking.
+
+\runin{Grounding combines present need and remembered use}
+The grounding score is
+\begin{equation}
+\label{eq:new-ranking}
+s(f\mid q)=\operatorname{rel}(f,q)\,
+                 u(f\mid q,\Uu),
+\end{equation}
+where $\operatorname{rel}(f,q)\in[0,1]$ measures relevance to the current
+request. The score orders eligible facts and the source sessions that
+can extend them. A retained exploration portion of retrieval examines
+new or weakly exposed facts: when available, each candidate batch
+reserves one position for the least-exposed eligible fact with positive
+current relevance, breaking ties by stable fact identifier. This
+prevents earlier retrieval choices from permanently hiding alternatives.
+Budget allocation can prioritize
+promising candidates, but a population reduction cannot silently turn
+the highest-ranked subset into the whole population.
+
+The exposure/use distinction is essential: counting every keyword hit
+as useful would reward the retrieval policy's own choices. Source
+checks, use attribution, and exploration reduce this feedback bias;
+they do not eliminate it. Evaluation must therefore include new-topic
+queries and shuffled query orders, not only repeated queries.
+
+\subsection{The Evidence Retrieval Pipeline}
+\label{subsec:new-retrieve}
+
+\runin{Scope, acquire, verify, return}
+For $\ret(r)$, the system selects temporally eligible candidate facts
+using Eq.~\eqref{eq:new-ranking}, determines unmet obligations, and
+acquires missing facts using Eqs.~\eqref{eq:new-acquisition}--
+\eqref{eq:new-merge}. It then verifies identity, source support, and
+version consistency before returning
+\begin{equation}
+\label{eq:new-retrieve}
+E=\operatorname{Ground}(r,\Hh,\Ff,\Uu),\qquad
+v=\operatorname{Select}(r,E).
+\end{equation}
+Grounding can be repeated if the first source region is insufficient.
+The response $m=(v,E,\sigma)$ includes the unresolved obligations and
+keeps its source anchors. A supported value can be read directly from
+a stored fact; no generation call is required merely to repeat it.
+If candidate values conflict, the pipeline verifies the source or
+returns the conflict for the agent to handle.
+
+\begin{memoryexample}{Example 3: retrieval also acquires reusable knowledge}
+\textbf{Request.} ``Who organized my Pine Trail hike?''
+\par\textbf{Scope.} Identify the user's hike at Pine Trail.
+\par\textbf{Acquire.} From \texttt{S1}, extract the attendance, location,
+and organizer facts shown in Example 1.
+\par\textbf{Verify.} The organizer span says ``Ava organized the hike'';
+its event reference resolves to \texttt{hike-1}.
+\par\textbf{Return.} $v=\texttt{Ava}$ with facts \texttt{f1--f3} and
+\texttt{supported} status. The facts remain available for later queries.
+\end{memoryexample}
+
+\subsection{The Evidence Reduction Pipeline}
+\label{subsec:new-reduce}
+
+\runin{Enumerate, evaluate, reduce, verify coverage}
+For $\red(g,P)$, the child plan first establishes the candidate evidence
+collection. Records referring to the same event or entity are
+canonicalized into a set of distinct candidates $D$. Each candidate
+then receives the evidence and value needed by the reduction:
+\begin{equation}
+\label{eq:new-reduce}
+x_e=\operatorname{Eval}(q,e,E),\qquad
+v=g(\{(e,x_e):e\in D\}).
+\end{equation}
+Eval returns a source-supported value or an explicit unknown. For a
+condition, $x_e\in\{1,0,\bot\}$ denotes supported yes, supported no, or
+unresolved. For a comparison, $x_e$ is a normalized attribute value,
+such as duration in hours. A semantic predicate can require an LLM;
+sums, cardinalities, and extrema over verified values are deterministic.
+The pipeline therefore exposes the uncertain judgments and performs
+the final arithmetic explicitly.
+
+\runin{A missing candidate is different from an unresolved condition}
+An exact population result requires both candidate coverage and resolved
+per-candidate evidence. Coverage is relative to the query's source
+snapshot. A source-region inventory records which eligible sessions
+have been examined for the relevant extraction obligations; new
+sessions invalidate the corresponding coverage. In the absence of a
+verified exclusion rule, all sessions in scope must be examined before
+an exhaustive result is marked supported. Completing a top-$k$
+retrieval is not a coverage certificate.
+
+For a count over a certified candidate population $D$, the pipeline
+can report an interval before every condition is resolved:
+\begin{equation}
+\label{eq:new-count-bounds}
+\sum_{e\in D}\mathbf{1}[x_e=1]
+\ \leq\ v\ \leq\
+\sum_{e\in D}\mathbf{1}[x_e\neq0].
+\end{equation}
+If some source regions remain unexamined, even this upper bound is
+not certified for the full population. The response reports a lower
+bound and the open coverage obligation. A maximum similarly remains
+partial when an unresolved candidate might exceed the current winner.
+Source inspection and extraction are fallible in practice; coverage
+metadata records the claimed scope and must be audited experimentally.
+
+\begin{memoryexample}{Example 4: reduction discovers facts the first query missed}
+\textbf{Request.} ``How many outdoor events did I attend in March?''
+\par\textbf{Reuse.} The attendance and identity of \texttt{hike-1} are
+already in $\Ff$. Its duration is unnecessary for this query.
+\par\textbf{Extend.} Examine \texttt{S1--S3}; acquire dates, activity
+types, and the attendance facts for \texttt{class-1} and \texttt{ride-1}.
+\par\textbf{Evaluate each distinct event.}
+\par\texttt{hike-1: hiking at Pine Trail; outdoor = yes.}
+\par\texttt{class-1: indoor pottery; outdoor = no.}
+\par\texttt{ride-1: cycling outdoors; outdoor = yes.}
+\par\textbf{Reduce.} $v=1+0+1=2$, with an explicit three-event witness.
+\par\textbf{Remember use.} The reduction used both positive evidence
+and the pottery exclusion evidence. All contribute use experience;
+the answer text alone would hide the role of the excluded candidate.
+\end{memoryexample}
+
+\subsection{The Evidence Composition Pipeline}
+\label{subsec:new-compose}
+
+\runin{Decompose, bind, execute, connect}
+A composition exposes a finite dependency graph of subplans. In
+topological order, earlier outputs bind identifiers or constraints in
+later requests. Its result is
+\begin{align}
+\label{eq:new-compose}
+(m_j,\Ff)&=\operatorname{Execute}
+       (P_j[\mathrm{bindings}],\Hh,\Ff,\Uu),\\
+v&=g(v_1,\ldots,v_d),\qquad E=\bigcup_{j=1}^{d}E_j.
+\end{align}
+The union is a candidate support set. The pipeline checks each link
+and retains the facts actually supporting the composition; shared
+facts and shared subplans are deduplicated. One subrequest can retrieve
+events, another can compare their durations, and a later one can
+retrieve a property of the selected event. Evidence from different
+sessions is connected through stable identities and temporal
+qualifiers, rather than by concatenating passages and assuming the
+model aligns them.
+
+A composition is supported only when all required links and required
+child outputs are supported. If the longest event is unresolved, its
+organizer cannot be returned as the organizer of the longest event,
+even when a retrieved organizer fact itself is valid. Optional evidence
+can remain partial without blocking a result whose specified operation
+does not depend on it. This distinction is part of the plan.
+
+\begin{memoryexample}{Example 5: the result of one request becomes the next scope}
+\textbf{Request.} ``Who organized the outdoor event that lasted longest?''
+\par\textbf{Subplan 1.} Reuse the outdoor-event population from Example 4.
+Extract the missing durations from \texttt{S1} and \texttt{S3}:
+\par\texttt{(hike-1, duration-hours, 4)}
+\par\texttt{(ride-1, duration-hours, 3)}
+\par Reduce by maximum; the winner is \texttt{hike-1}.
+\par\textbf{Subplan 2.} Bind \texttt{event = hike-1} in the organizer
+request. Reuse \texttt{f3: (hike-1, organizer, Ava)}.
+\par\textbf{Connect.} The winner identifier and organizer subject match.
+Return \texttt{Ava}, supported by the population, the durations, and
+the organizer link. The reply needs no new organizer extraction.
+\end{memoryexample}
+
+\runin{What experience changes, and what the plan preserves}
+Second-order memory affects the order and allocation of evidence work
+in all three pipelines. It cannot remove a required population member,
+change a reduction predicate, or replace a dependency link. Under
+complete evidence and exact primitive operations, changing retrieval
+order leaves the result unchanged. Under a finite budget, the system
+may return partial evidence sooner, and its stated completeness changes
+accordingly. Neither result invariance under truncation nor automatic
+accuracy improvement is assumed.
+
+\section{For Efficiency: Experience-Guided Cost-Aware Execution}
+\label{sec:new-efficiency}
+
+The plan specifies what computation a memory query requires; it does
+not determine how many LLM executions that particular query needs.
+A reduction over cached numerical facts can be cheaper than a retrieval
+with ambiguous identity. The executor therefore budgets the query
+using its current evidence and second-order experience, and revises
+the budget after each execution.
+
+\subsection{Budget the Query, Not the Plan Label}
+\label{subsec:new-budget}
+
+\runin{Cost includes acquiring the missing memory}
+For $k$ stochastic execution rounds, memory-side cost is
+\begin{equation}
+\label{eq:new-cost}
+C(q,k)=C_{\mathrm{plan}}(q)+C_{\mathrm{acquire}}(q)
+              +\sum_{j=1}^{k}C_{\mathrm{exec}}(q,j).
+\end{equation}
+Planning, extraction, verification, and model-assisted predicate
+evaluation are counted wherever they occur. Deterministic selection
+and arithmetic do not add an LLM call. Cached facts and unchanged
+coverage are reused across rounds. If new evidence is acquired during
+execution, its cost is added to $C_{\mathrm{acquire}}$, and the affected
+execution state is revised. Cost can be measured in LLM calls or
+priced tokens, but one chosen unit must be used consistently in the
+budget objective. Latency is measured separately. The agent's final
+answer generation is reported as an additional end-to-end cost.
+
+\runin{Query features are observed before allocating executions}
+The context $z(q)$ includes candidate-set size, dependency depth,
+unresolved evidence, conflicting versions, and the fraction of usable
+facts already cached. It also includes the query topic used for
+second-order retrieval. These features distinguish queries within
+the same plan family. The executor reads experience for matching
+contexts to estimate how risk and cost change with additional work.
+
+\runin{Risk is observable evidence risk}
+Let $\ell(q,m)\in[0,1]$ measure an execution's unresolved evidence risk.
+The diagnostic combines unfulfilled requirements, unsupported result
+claims, unresolved dependencies, and disagreement on required semantic
+judgments. Specifically,
+\begin{equation}
+\label{eq:new-risk}
+\ell(q,m)=\max\{\operatorname{miss}(q,E),\,
+  \operatorname{unsup}(v,E),\,\operatorname{dis}(q)\}.
+\end{equation}
+Here $\operatorname{miss}$ is the fraction of mandatory evidence
+obligations still open, including required population coverage and
+dependency links; $\operatorname{unsup}$ is the fraction of returned
+atomic claims without checked support; and $\operatorname{dis}$ is the
+fraction of required semantic decisions with conflicting observed
+judgments. A component with no applicable obligations or claims is
+zero. An unexecuted mandatory decision remains a missing obligation,
+even though it has not yet produced disagreement. The checks are fixed
+before evaluation and their components are reported separately.
+An exact deterministic reduction with verified
+inputs can have zero diagnostic risk without repeated generation.
+Two ungrounded samples giving the same response still fail the source
+support checks. This diagnostic is an optimization surrogate; it is
+not an oracle for answer correctness.
+
+\runin{An experience-conditioned execution budget}
+Given predicted risk $\widehat L(q,k\mid\Uu)$ and cost
+$\widehat C(q,k\mid\Uu)$, the initial budget is
+\begin{equation}
+\label{eq:new-adaptive-budget}
+K(q)=\argmin_{0\leq k\leq K_{\max}(q)}
+\left\{\widehat L(q,k\mid\Uu)
+        +\lambda\widehat C(q,k\mid\Uu)\right\}.
+\end{equation}
+The nonnegative multiplier $\lambda$ controls the tradeoff between
+evidence risk and measured cost. $K_{\max}(q)$ is a resource cap, not a
+fixed budget assigned to a plan class. $k=0$ is feasible when cached
+evidence and deterministic operations can already produce a supported
+response. If a query needs extraction, that acquisition cost remains
+part of the objective even when no subsequent sampling is needed.
+In a discrete tie, the smaller budget is chosen.
+
+Risk and cost estimates are computed from observed outcomes of
+similar contexts. Sparse contexts back off to a declared prior, and
+estimates retain uncertainty intervals. Trials not executed have no
+observed outcomes; the executor does not manufacture counterfactual
+risk reductions. The budget is consequently a decision under estimated
+uncertainty, not a claim to know the optimal number of calls in advance.
+
+\subsection{Revise the Budget by the Value of More Computation}
+\label{subsec:new-value}
+
+\runin{Spend on the unresolved part of the pipeline}
+After a round, the executor checks evidence obligations and disputed
+judgments. It can acquire an unexamined source region or rerun an
+uncertain semantic block. Verified fact lookups and deterministic
+reductions are reused. If acquired evidence changes an input, dependent
+blocks are invalidated and recomputed. This avoids spending another
+full pass merely because one event's condition is ambiguous.
+
+\runin{A sequential decision}
+Let $a$ be an admissible next action, and let
+$\widehat{\Delta L}_k(a)$ be its predicted reduction in the current
+evidence-risk diagnostic, conditional on all work so far. The decision is
+\begin{equation}
+\label{eq:new-value}
+\begin{split}
+a_k^{*}&=\argmax_a
+     \left\{\widehat{\Delta L}_k(a)-\lambda\widehat c_k(a)\right\},\\
+\mathrm{continue}&\quad\text{iff}\quad
+\max_a\left\{\widehat{\Delta L}_k(a)
+                       -\lambda\widehat c_k(a)\right\}>0.
+\end{split}
+\end{equation}
+An action is admissible only if it respects the remaining resource cap,
+the query's source scope, and the plan's dependencies. On stopping,
+the current response is returned with its actual support status. An
+unmet obligation never becomes satisfied solely because the resource
+cap was reached.
+
+Equation~\eqref{eq:new-value} implements a receding-horizon,
+one-step value-of-computation policy. The initial budget in
+Eq.~\eqref{eq:new-adaptive-budget} is its lookahead envelope and is
+re-estimated after observations. When a sequence of actions is needed
+before any improvement is visible, that sequence is evaluated as a
+bounded admissible bundle; otherwise a one-step rule could stop before
+completing a useful dependency. Global optimality is not claimed for
+the practical estimator.
+
+\runin{Agreement is specific to a supported computation}
+For repeated semantic judgments, outputs are normalized to the plan's
+required result: event labels for a predicate, normalized values for
+a comparison, or canonical facts for a synthesis. The executor measures
+disagreement on those values, while checking source support and
+coverage independently. It never compares entire explanatory paragraphs
+as a proxy for factual equivalence. Agreement can lower the predicted
+value of another execution, but its stopping effect depends on the
+query's unresolved obligations and observed cost.
+
+\begin{proposition}[The local stopping condition]
+\label{prop:new-stopping}
+If predicted risk changes and costs equal their conditional expectations,
+and an admissible action is followed by stopping, taking the action
+decreases the expected risk-plus-cost objective exactly when
+$\widehat{\Delta L}_k(a)>\lambda\widehat c_k(a)$.
+\end{proposition}
+\begin{proof}
+Let the current diagnostic be $L$. Stopping incurs $L$. Taking $a$
+and then stopping incurs
+$L-\widehat{\Delta L}_k(a)+\lambda\widehat c_k(a)$ in expectation.
+Their difference gives the stated condition. Past cost is already
+incurred and cancels from this comparison.
+\end{proof}
+The proposition justifies the decision rule for its specified local
+objective. It does not establish that a diagnostic predicts all
+answer errors, or that estimated action values are exact.
+
+\subsection{Execution Experience Becomes Second-Order Memory}
+\label{subsec:new-cost-experience}
+
+\runin{Remember what an execution bought}
+In addition to fact-use counts, $\Uu$ stores execution summaries for
+context and action pairs: number of observations, mean observed risk
+change, mean measured cost, and their dispersion. For any recorded
+outcome $x$, its mean is updated incrementally:
+\begin{equation}
+\label{eq:new-mean-update}
+n\leftarrow n+1,\qquad
+\overline{x}\leftarrow\overline{x}
+                    +\frac{x-\overline{x}}{n}.
+\end{equation}
+The same update applies to cost and observed risk changes. A prefix
+outcome is associated only with the work actually performed. The
+observed action's source obligations and cache state are part of its
+context, so costs from a cold query do not masquerade as costs of a
+warm query. Fact-use summaries guide grounding; execution summaries
+guide the next budget. Both are memories of serving the same user.
+
+\runin{Shared evidence does not create independent votes}
+Repeated evaluations can share a frozen fact snapshot while drawing
+new semantic judgments. Those judgments provide conditional
+disagreement evidence, not statistically independent verification of
+the underlying extraction. If a source interpretation is in doubt,
+the executor must revisit that source instead of repeatedly sampling
+from an erroneous cached fact. Successful acquisition enriches $\Ff$;
+its verified downstream use and measured cost enrich $\Uu$.
+
+\begin{memoryexample}{Example 6: two reductions receive different budgets}
+\textbf{Warm comparison.} The durations \texttt{4 hours} and
+\texttt{3 hours} from Example 5 are cached and source-verified.
+``Which event lasted longer?'' needs a deterministic maximum. Its
+additional stochastic execution budget can be $K(q)=0$.
+\smallskip
+\textbf{Uncertain count.} A later session describes another activity
+whose outdoor status is unclear. ``How many outdoor events?'' now has
+a coverage update and an unresolved candidate condition. The executor
+first pays for the missing evidence. If one semantic evaluation leaves
+the condition disputed and second-order experience predicts useful
+risk reduction, it allocates another execution to that condition.
+If the source cannot resolve it, the count remains partial.
+\smallskip
+Both requests have a \red{} root. Their allocation follows evidence,
+uncertainty, reuse, and predicted cost rather than a class-specific
+constant. These budgets illustrate the decision rule; they are not
+reported experimental measurements.
+\end{memoryexample}
+
+\runin{End-to-end behavior}
+A query identifies evidence needs, acquires reusable facts, and executes
+a dependency-specific pipeline. The executor allocates further work
+where its predicted benefit warrants its cost. The agent receives a
+supported or explicitly incomplete memory response and generates the
+user-facing answer. The fact-use and execution experiences are then
+remembered, and the exchange joins the raw history. Later queries can
+reuse both the acquired knowledge and the experience of acquiring and
+using it.
+
+\section{Experiments and Evaluation}
+\label{sec:new-experiments}
+
+Our evaluation separates the available empirical evidence from the
+experiments needed for the revised architecture. The released artifact
+contains an earlier prototype and four sets of per-question evaluation
+records. We recompute their aggregates and inspect their category
+distributions. This audit is evidence about that prototype, while the
+fact-level use experience, recursive composition, and dynamic budget
+specified above require a matched implementation and evaluation.
+
+\subsection{Artifact, Metrics, and Reproducibility}
+\label{subsec:new-artifact}
+
+\runin{Available records}
+The archived runs contain 1,540 LoCoMo records, 451 records under the
+artifact's LongMemEval-v label, 30 EvoMem records, and 240 DynamicMem
+records. Each has a question identifier, a category, a generated answer,
+and a score in $[0,1]$. LoCoMo, EvoMem, and DynamicMem also have a
+paired Full-Context score. LongMemEval-v does not. We use the artifact's
+variant name and category identifiers without assuming that its
+451-record subset is the standard LongMemEval benchmark configuration.
+
+\runin{Aggregation}
+For a set of $N$ records with scores $s_i$, the reported score is
+\begin{equation}
+\label{eq:new-score}
+\operatorname{Score}=\frac{100}{N}\sum_{i=1}^{N}s_i.
+\end{equation}
+The archive describes token F1 for LoCoMo, phrase-set F1 for
+LongMemEval-v, and loose F1 for EvoMem and DynamicMem. These scales are
+not averaged across benchmarks. We verify record counts, unique
+identifiers, score ranges, and aggregate calculations. The archive does
+not include the source questions, reference answers, complete scoring
+scripts, or run configuration; consequently, this audit does not
+independently re-score the generated answers or establish the exact
+backbone and prompt conditions of every run.
+
+\runin{The released implementation}
+The source archive provides cached fact-triple extraction, per-session
+entity matching, query-category-dependent rendering switches, a
+session-use counter, and lexical query routing. Its demonstration runs
+over eight synthetic sessions. The demonstration without a configured
+LLM exercises routing, prompt construction, and experience persistence,
+but produces no extracted triples or answered-query accuracy. The
+archive does not contain the revised fact-use reporting interface,
+recursive dependency executor, or query-specific risk--cost allocator.
+
+\begin{table*}[t]
+\centering\small
+\caption{Recomputed scores of the archived prototype. Full-Context is
+the paired baseline present in the records. Differences are percentage
+points on each benchmark's own metric. These runs predate the revised
+mechanisms; no dynamic-budget gain is inferred from them.}
+\label{tab:new-archived-results}
+\begin{tabular}{@{}lrlrrr@{}}
+\toprule
+Archived benchmark & $N$ & Metric & Full-Context & Prototype & Difference\\
+\midrule
+LoCoMo & 1,540 & Token F1 & 52.24 & 58.76 & $+6.53$\\
+LongMemEval-v & 451 & Phrase-set F1 & -- & 10.31 & --\\
+EvoMem & 30 & Loose F1 & 16.68 & 24.60 & $+7.92$\\
+DynamicMem & 240 & Loose F1 & 33.53 & 34.93 & $+1.40$\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{What the Archived Runs Establish}
+\label{subsec:new-archive-results}
+
+Table~\ref{tab:new-archived-results} reproduces the archived means to
+two decimal places. On the three runs with paired scores, the prototype
+exceeds Full-Context by 6.53, 7.92, and 1.40 points, respectively.
+The paired record-level win/tie/loss counts are 630/510/400 for LoCoMo,
+28/0/2 for EvoMem, and 108/98/34 for DynamicMem. These counts describe
+the archived answer scores; repeated questions from one user are not
+treated as independent evidence for a statistical significance claim.
+
+\runin{The aggregate hides different behaviors}
+Table~\ref{tab:new-category-results} retains the archive's category
+identifiers. In LoCoMo, the prototype improves on \texttt{cat=1} and
+\texttt{cat=4}, but falls below Full-Context on \texttt{cat=2} and
+\texttt{cat=3}. All three DynamicMem category means improve, with
+substantially different absolute score levels. The original category
+labels do not establish the new plan root: a new dependency annotation
+is needed before any Retrieve/Reduce/Compose decomposition is reported.
+
+\begin{table}[t]
+\centering\small
+\caption{Archived category scores, recomputed without remapping them to
+the revised plan classes. FC denotes Full-Context.}
+\label{tab:new-category-results}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Category & $N$ & FC & Prototype\\
+\midrule
+\multicolumn{4}{@{}l}{\emph{LoCoMo}}\\
+\texttt{cat=1} & 282 & 40.43 & 50.84\\
+\texttt{cat=2} & 321 & 52.10 & 50.52\\
+\texttt{cat=3} & 96 & 35.93 & 32.60\\
+\texttt{cat=4} & 841 & 58.11 & 67.55\\
+\midrule
+\multicolumn{4}{@{}l}{\emph{DynamicMem}}\\
+Habits & 79 & 65.78 & 66.96\\
+Preferences & 57 & 20.19 & 21.97\\
+User attributes & 104 & 16.34 & 17.70\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\runin{Observed failures need their own analysis}
+Fifty-nine LoCoMo records have empty generated answers. In the
+LongMemEval-v archive, all 157 records in the three
+\texttt{*-abs} categories and \texttt{errors-gotchas} have zero scores.
+Without gold answers and execution traces, these observations cannot
+be attributed specifically to retrieval, abstention, extraction, or
+answer formatting. The revised response interface makes these failure
+types explicit and motivates preserving source and execution traces
+alongside final answer scores.
+
+\subsection{Matched Evaluation of the Revised System}
+\label{subsec:new-evaluation-protocol}
+
+The revised system requires three groups of experiments, corresponding
+to architecture, performance, and efficiency. These are the protocol
+for the next implementation rather than completed results.
+
+\runin{Architecture: does query-driven memory acquire reusable knowledge?}
+Compare raw-session retrieval, upfront fact extraction, and query-driven
+fact acquisition under the same agent and evidence scope. Report answer
+quality, fact-source precision, recall of query-required facts, and
+the rate at which later queries reuse earlier fact acquisitions.
+Separate cold queries from warm queries. Preserve historical versions
+and test both current and historical requests. A fixed summary should
+not receive a larger inference budget merely to compensate for omitted
+facts without recording that additional cost.
+
+\runin{Performance: do dependencies and use experience improve evidence?}
+Compare a generic retrieve-then-read pipeline with the three recursive
+pipelines, keeping the fact state, agent, and execution cap matched.
+Annotate a held-out sample with scopes, root classes, candidate sets,
+and dependency links. Report root classification, missing dependencies,
+source coverage, and final answer quality. Ablate fact-use experience,
+exposure/use separation, and exploration. Evaluate real query order,
+shuffled order, and new-topic queries with an empty or warm $\Uu$.
+Hold the first-order cache fixed in one comparison so that improved
+fact coverage is not mistaken for improved second-order ranking.
+
+\runin{Efficiency: does the individual-query allocator spend better?}
+Compare uniform execution counts, fixed class budgets, and
+Eq.~\eqref{eq:new-adaptive-budget}. Use identical evidence acquisition
+and answer generation. Plot quality against measured cost across
+resource caps and $\lambda$ values, including acquisition, planning,
+verification, and the final agent call. Evaluate full reruns against
+selective block re-execution. Report the calibration of predicted risk
+changes against their observed values and the relationship between the
+diagnostic and actual correctness. In an offline audit subset, execute
+multiple budget prefixes to obtain genuine additional-work outcomes;
+only the prefixes actually observed can train or assess the estimator.
+
+\runin{Statistical and resource controls}
+Freeze benchmark splits, model versions, prompts, category annotation,
+and cost units before comparison. Keep user partitions isolated.
+Report uncertainty by resampling users or conversation groups when
+those identifiers are available. Model-call counts, input/output
+tokens, wall-clock latency, and persistent state size are distinct
+measurements. Session-level extraction cost must be allocated to the
+workload or reported separately, and never omitted only for one system.
+Memory capacity should be varied independently from the number of
+queries, because first-order fact growth and second-order experience
+growth need not have the same scaling behavior.
+
+\subsection{Limits and Error Analysis}
+\label{subsec:new-limitations}
+
+The model exposes several limits that evaluation must measure.
+Extraction can miss or misinterpret facts; stable identity resolution
+can incorrectly merge events; and a semantic predicate can remain
+ambiguous even after repeated execution. Second-order ranking can
+reinforce an early exposure bias, especially under a small retrieval
+budget. Dynamic allocation can stop too early when its risk estimator
+is poorly calibrated or its action horizon is too short. A complete
+population request can require inspection proportional to the in-scope
+history: call caps do not make that source work constant.
+
+These limits distinguish structural claims from empirical ones.
+Proposition~\ref{prop:new-coverage} establishes coverage of the declared
+plan language, not natural-language parsing accuracy.
+Proposition~\ref{prop:new-stopping} establishes a conditional local
+decision rule, not a bound on answer error. The available archive
+cannot validate fact-use attribution, query-position adaptation,
+dynamic-budget savings, or revised scalability. Those claims require
+the traces and matched experiments described above.
+
+\section{Related Work}
+\label{sec:new-related}
+
+\runin{Conversation and fact memory}
+MemGPT manages information across context and external memory
+tiers~\cite{memgpt}. Mem0 builds persistent memory by extracting and
+updating salient conversational facts~\cite{mem0}. Zep represents
+time-dependent relationships through a temporal knowledge
+graph~\cite{zep}, while A-MEM builds linked notes that evolve with
+new experiences~\cite{amem}. These systems provide important fact
+and context representations. \sys{} focuses on the relationship
+between query-induced first-order facts and second-order experience
+of using those facts. Its second-order state refers to evidence
+exposure, downstream use, and execution cost, rather than simply
+adding another semantic description of the conversation.
+
+\runin{Retrieval control and memory queries}
+LongMemEval separates memory design into indexing, retrieval, and
+reading, and evaluates information extraction, multi-session reasoning,
+temporal reasoning, knowledge updates, and abstention~\cite{longmemeval}.
+MemR$^3$ uses an evidence-gap tracker and a controller that selects
+retrieval, reflection, or answering~\cite{memr3}. These are relevant
+precedents for explicit memory access and iterative evidence gathering.
+The three classes in this paper instead describe the structure of the
+requested evidence computation: selecting facts, reducing a collection,
+or composing dependencies. They are plan constructors, not the
+controller's possible next actions. The cost controller acts on these
+plans and retains user-specific experience of its actions.
+
+\runin{Query-driven acquisition}
+EUR~\cite{eur} argues that incoming queries can reveal missing concepts
+and facts and leave reusable state for future workloads. We borrow
+the query-driven acquisition principle and the organization of a
+running example through successive state changes. Our interface serves
+an agent's information needs over conversational sessions: first-order
+state contains user facts, and second-order state remembers their use.
+The contribution under study is this coupled memory behavior, rather
+than treating conversation history as a schema-first store.
+
+\runin{Repeated reasoning and computational budgets}
+Self-consistency samples multiple reasoning paths and aggregates their
+answers~\cite{selfconsistency}. Agreement is useful evidence about
+variation among outputs, but cannot verify a shared false premise.
+Our execution objective conditions additional work on source support,
+evidence coverage, unresolved dependencies, and cost experience.
+A query can reuse verified deterministic results without resampling,
+or spend on one unresolved predicate or source region. Empirical
+comparison with fixed and adaptive sampling policies is necessary to
+establish whether the additional state and decisions are worthwhile.
+
+\runin{Evaluation of long-term agent memory}
+LoCoMo studies long-term conversational recall and related tasks across
+many sessions~\cite{locomo}. LongMemEval emphasizes multiple forms of
+memory reasoning~\cite{longmemeval}, and MemBench broadens memory
+evaluation across scenarios and question types~\cite{membench}.
+Their category labels are not interchangeable with the plan roots
+defined here. A query-level dependency annotation is needed to
+evaluate structural routing, while chronological and shuffled
+workloads are needed to evaluate second-order adaptation.
+
+\section{Conclusion}
+\label{sec:new-conclusion}
+
+\sys{} organizes agent memory through raw conversations, query-driven
+facts, and experience of using those facts. This separation preserves
+the evidence for future needs, lets first-order knowledge grow when a
+query requires it, and lets second-order knowledge guide later memory
+access. Three recursive evidence pipelines expose direct requests,
+population computations, and linked dependencies. A cost-aware executor
+allocates work to the individual query and updates its allocation from
+observed evidence and execution experience.
+
+The resulting model has explicit interfaces, state transitions,
+support obligations, and a computational coverage boundary. The
+archived prototype records establish a reproducible empirical starting
+point, including category-level failures. Implementing the revised
+fact-use interface and dynamic executor, then evaluating them under
+matched source, model, and cost conditions, is the remaining step for
+validating the proposed performance and efficiency benefits.
+
+\begin{thebibliography}{99}
+\bibitem{mem0}
+Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet Singh, and Deshraj
+Yadav. 2025. Mem0: Building Production-Ready AI Agents with Scalable
+Long-Term Memory. \emph{arXiv:2504.19413}.
+\url{https://arxiv.org/abs/2504.19413}.
+
+\bibitem{memr3}
+Xingbo Du, Loka Li, Duzhen Zhang, and Le Song. 2025.
+MemR$^3$: Memory Retrieval via Reflective Reasoning for LLM Agents.
+\emph{arXiv:2512.20237}.
+\url{https://arxiv.org/abs/2512.20237}.
+
+\bibitem{eur}
+Nan Tang and Haixun Wang.
+Back to the Future: The Evolving Universal Relation Model.
+Undated manuscript supplied as a reference.
+
+\bibitem{memgpt}
+Charles Packer, Sarah Wooders, Kevin Lin, Vivian Fang, Shishir G. Patil,
+Ion Stoica, and Joseph E. Gonzalez. 2023.
+MemGPT: Towards LLMs as Operating Systems. \emph{arXiv:2310.08560}.
+\url{https://arxiv.org/abs/2310.08560}.
+
+\bibitem{zep}
+Preston Rasmussen, Pavlo Paliychuk, Travis Beauvais, Jack Ryan, and
+Daniel Chalef. 2025.
+Zep: A Temporal Knowledge Graph Architecture for Agent Memory.
+\emph{arXiv:2501.13956}. \url{https://arxiv.org/abs/2501.13956}.
+
+\bibitem{amem}
+Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Juntao Tan, and Yongfeng
+Zhang. 2025. A-MEM: Agentic Memory for LLM Agents.
+\emph{arXiv:2502.12110}. \url{https://arxiv.org/abs/2502.12110}.
+
+\bibitem{selfconsistency}
+Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan
+Narang, Aakanksha Chowdhery, and Denny Zhou. 2022.
+Self-Consistency Improves Chain of Thought Reasoning in Language Models.
+\emph{arXiv:2203.11171}. \url{https://arxiv.org/abs/2203.11171}.
+
+\bibitem{locomo}
+Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov, Mohit Bansal, Francesco
+Barbieri, and Yuwei Fang. 2024. Evaluating Very Long-Term Conversational
+Memory of LLM Agents. \emph{ACL}.
+\url{https://arxiv.org/abs/2402.17753}.
+
+\bibitem{longmemeval}
+Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang, Kai-Wei Chang, and Dong Yu.
+2025. LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive
+Memory. \emph{ICLR}. \url{https://arxiv.org/abs/2410.10813}.
+
+\bibitem{membench}
+Haoran Tan, Zeyu Zhang, Chen Ma, Xu Chen, Quanyu Dai, and Zhenhua Dong.
+2025. MemBench: Towards More Comprehensive Evaluation on the Memory of
+LLM-based Agents. \emph{Findings of ACL}.
+\url{https://arxiv.org/abs/2506.21605}.
+\end{thebibliography}
+
+\end{document}
