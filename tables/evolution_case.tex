@@ -1,0 +1,54 @@
+%!TEX root = ../main.tex
+\begin{table*}[t]
+  \centering
+  \small
+  \caption{End-to-end case study of evolving content and operations. Each turn
+  shows the query-determined pipeline, the retrieved memory
+  $m_t=(v_t,E_t,\sigma_t)$, and the persistent updates used by later queries.}
+  \label{tbl:evolution-case}
+  \setlength{\tabcolsep}{5pt}
+  \renewcommand{\arraystretch}{1.12}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.18\textwidth}
+                      >{\raggedright\arraybackslash}p{0.26\textwidth}
+                      >{\raggedright\arraybackslash}p{0.25\textwidth}
+                      >{\raggedright\arraybackslash}p{0.25\textwidth}@{}}
+    \toprule
+    \textbf{Turn and question} & \textbf{Pipeline and required evidence}
+      & \textbf{Retrieved memory} & \textbf{Persistent update} \\
+    \midrule
+    \cellcolor{lightblue}\textbf{Turn 1 (Mar.~17)}\newline
+    \emph{Whom should I contact to repeat my March outdoor activities?}
+      & \textbf{Independent composition.} Verify the closed three-activity
+        scope, judge each setting, and project the organizers of the outdoor
+        activities.
+      & $v_1=\{\text{Ava},\text{Cara}\}$; $E_1$ contains the scope, three
+        setting judgments, and three returned organizer links;
+        $\sigma_1=\texttt{supported}$.
+      & $\Hh$: closed question/answer. $\Ff$: settings and organizer links.
+        $\Uu$: returned evidence, credited settings and Ava/Cara links,
+        unused Ben link, outcome, and $C(q_1)$. \\
+    \addlinespace[2pt]
+    \cellcolor{lightorange}\textbf{Turn 2 (Mar.~18)}\newline
+    \emph{Who organized my longest outdoor activity in March?}
+      & \textbf{Dependent composition.} Reuse settings, acquire the missing
+        durations, compare $4>3$, and bind \texttt{hike-1} to its organizer.
+      & $v_2=\text{Ava}$; $E_2$ contains the duration comparison and
+        winner-to-organizer binding; $\sigma_2=\texttt{supported}$.
+      & $\Hh$: closed question/answer. $\Ff$: two duration facts.
+        $\Uu$: their use, acquisition outcome, and $C(q_2)$. A repeated
+        comparison needs $K(q)=0$ additional memory-side calls. \\
+    \addlinespace[2pt]
+    \cellcolor{lightgreen}\textbf{Turn 3 (Mar.~24)}\newline
+    \emph{How many March activities were outdoors?}
+      & \textbf{Independent composition with selective refinement.} Reuse
+        three completed judgments and evaluate only the rain-altered outing's
+        actual setting.
+      & With the follow-up, $v_3=1+0+1+0=2$ and
+        $\sigma_3=\texttt{supported}$. Without it, $v_3=[2,3]$ and
+        $\sigma_3=\texttt{partial}$.
+      & $\Hh$: closed question/answer. $\Ff$: verified actual setting.
+        $\Uu$: refinement outcome and $C(q_3)$. Earlier support is retained
+        but is not transferred to the new outing. \\
+    \bottomrule
+  \end{tabular}
+\end{table*}

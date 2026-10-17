@@ -2,16 +2,13 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Answer scores by benchmark-question position in a user's sequence,
-      evaluated on users with $\geq 10$ questions so that all four buckets are
-      populated. \sys{} increases monotonically across buckets;
-      query difficulty and cache growth are not isolated. The subset
-      differs from the all-user population in Table~\ref{tbl:main_results}.}
+    \caption{Answer quality by position in a user's query history, during
+      which user evidence and second-order Agent--Memory experience accumulate.}
     \label{tbl:second_order_learning}
     \begin{tabular}{@{}lcccc@{}}
         \toprule
         \multirow{2}{*}{\textbf{Method}}
-            & \multicolumn{4}{c}{\textbf{Question position for one user}} \\
+            & \multicolumn{4}{c}{\textbf{Within-user question position}} \\
         \cmidrule(l){2-5}
             & 1--3 & 4--6 & 7--9 & 10+ \\
         \midrule

@@ -1,126 +1,30 @@
 %!TEX root = ../../main.tex
 \begin{figure*}[t]
 \centering
-\begin{tikzpicture}[
- font=\sffamily\footnotesize,
- box/.style={draw=#1,line width=0.8pt,rounded corners=2pt,
-  fill=#1!6,align=center,inner sep=5pt},
- stage/.style={box=softblue,text width=2.5cm,minimum height=1.6cm,
-  inner sep=4pt},
- flow/.style={->,>=Stealth,line width=0.8pt},
- trace/.style={->,>=Stealth,dashed,line width=0.8pt,
-  rounded corners=4pt}
-]
-% Three horizontal bands keep state, execution, and cost control separate.
-\draw[draw=darkgray_x11!55,fill=darkgray_x11!2,
- rounded corners=3pt,line width=0.8pt] (3.55,0.35) rectangle (16.65,8.25);
-\node[font=\small\bfseries] at (10.1,7.95)
- {Continually evolving memory system $\Mm$};
-
-% The narrow agent interface has a straight query and a separate return lane.
-\node[box=darkgray_x11,text width=1.95cm,minimum height=0.8cm]
- (user) at (1.25,7.0) {\textbf{User}};
-\node[box=darkgray_x11,text width=1.95cm,minimum height=1.0cm]
- (agent) at (1.25,3.9) {\textbf{Agent}};
-\node[box=softblue,text width=1.95cm,minimum height=1.1cm]
- (result) at (1.25,2.25) {\textbf{Retrieved memory}\\$m=(v,E,\sigma)$};
-\draw[flow] ($(user.south)+(-0.43,0)$) --
- node[left,font=\scriptsize,align=center] {Question\\$Q$}
- ($(agent.north)+(-0.43,0)$);
-\draw[flow] ($(agent.north)+(0.43,0)$) --
- node[right,font=\scriptsize,align=center] {Answer\\$A$}
- ($(user.south)+(0.43,0)$);
-\draw[flow,softblue] (result.north) --
- node[right,font=\scriptsize,align=left] {answer\\evidence} (agent.south);
-
-% State progression: conversational evidence, user facts, use experience.
-\node[box=darkgray_x11,text width=3.2cm,minimum height=1.2cm]
- (raw) at (5.85,6.85) {\textbf{Raw sessions $\Hh$}\\
- Closed User--Agent sessions\\Questions and answers};
-\node[box=softblue,text width=3.2cm,minimum height=1.2cm]
- (facts) at (10.1,6.85) {\textbf{First-order memory $\Ff$}\\
- Query-driven facts\\Knowledge of the user};
-\node[box=cadmiumgreen,text width=3.2cm,minimum height=1.2cm]
- (usage) at (14.35,6.85) {\textbf{Second-order memory $\Uu$}\\
- Agent--Memory experience\\Use credit; outcomes/cost};
-\draw[flow,softblue] (raw.east) -- (facts.west);
-\draw[flow,cadmiumgreen] (facts.east) -- (usage.west);
-
-% Performance is one left-to-right pipeline. Its only local loop is binding.
-\draw[draw=softblue,fill=softblue!3,rounded corners=2pt,
- line width=0.8pt] (3.75,2.6) rectangle (16.15,5.35);
-\node[align=center] at (9.95,4.98)
- {\textcolor{softblue}{\textbf{For Performance}}\\
- \textbf{Experience-guided memory access}};
-\node[stage] (plan) at (5.4,3.9)
- {\textbf{Plan}\\Lookup\\Independent\\Dependent};
-\node[stage] (ground) at (9.45,3.9)
- {\textbf{Ground}\\Rank and reuse facts\\Acquire unmet evidence};
-\node[stage] (execute) at (13.5,3.9)
- {\textbf{Execute}\\Return / combine / bind\\Check result support};
-\draw[flow,softblue] (agent.east) --
- node[above,font=\scriptsize] {Query $q$} (plan.west);
-\draw[flow,softblue] (plan.east) -- (ground.west);
-\draw[flow,softblue] (ground.east) -- (execute.west);
-\draw[flow,softblue] (execute.south)
- .. controls (13.5,2.87) and (9.45,2.87) .. (ground.south);
-\node[softblue,font=\scriptsize] at (11.475,2.765)
- {next bound request};
-
-% All three state reads descend directly to the performance band.
-\draw[trace,darkgray_x11] (raw.south) --
- node[left,font=\scriptsize] {sources} (5.85,5.35);
-\draw[trace,softblue] (facts.south) --
- node[left,font=\scriptsize] {facts} (10.1,5.35);
-\draw[trace,cadmiumgreen] (usage.south) --
- node[left,font=\scriptsize] {use experience} (14.35,5.35);
-
-% The return lane stays between performance and efficiency, below the loop.
-\draw[flow,softblue,rounded corners=4pt] (execute.south east)
- -- (14.9,2.25) --
- node[above,font=\scriptsize] {retrieved memory $m$} (result.east);
-
-% Efficiency controls the entire pipeline through a single short connector.
-\draw[draw=softorange,fill=softorange!3,rounded corners=2pt,
- line width=0.8pt] (3.75,0.55) rectangle (16.15,1.95);
-\node[align=center,text width=2.25cm] at (5.15,1.25)
- {\textcolor{softorange}{\textbf{For Efficiency}}\\
- \textbf{Cost-aware execution}};
-\node[align=left,text width=4.8cm] at (9.1,1.25)
- {\textbf{Reserve $K(q)$ within the hard cap}\\
- Current gaps + action experience\\
- Reallocate after each action.};
-\node[align=left,text width=3.7cm] at (14.05,1.25)
- {\textbf{Selective refinement}\\
- Continue iff $\widehat{\Delta\ell}>\lambda\widehat c$;\\
- else return current $m$.};
-\draw[flow,softorange] (15.6,1.95) -- (15.6,2.6);
-
-% One shared outer lane carries action-experience reads and outcome updates.
-\draw[trace,<->,cadmiumgreen] (usage.east) -- (16.48,6.85)
- -- (16.48,1.25) -- (16.15,1.25);
-\node[cadmiumgreen,font=\scriptsize,rotate=90] at (16.8,4.0)
- {action experience: read / update};
-
-% Agent feedback is described in the state boxes instead of extra arrows.
-\end{tikzpicture}
-\caption{State, performance, and efficiency occupy separate bands.
-Raw sessions retain closed User--Agent conversations; first-order memory
-retains query-driven facts; second-order memory retains Agent--Memory
-experience. The performance pipeline plans, grounds, and executes,
-preserving source support, coverage, and bindings. Cost-aware execution
-controls its work through query-specific reservations and selective
-refinement. The local blue loop resolves the next bound request.
-Dashed paths show state access and feedback; the shared green outer
-lane reads and updates action outcomes/cost.}
-\Description{The user, agent, and retrieved memory are arranged vertically
-on the left. On the right, three aligned memory levels sit above one
-left-to-right performance pipeline; an efficiency-control band sits
-below. State access descends vertically. A separate horizontal lane
-returns retrieved memory to the agent. Closed sessions and use credit
-are described inside the raw and second-order state boxes, without
-separate agent-feedback arrows. A shared right-hand lane reads and
-records action experience. Only dependent binding uses
-a local curved return within the performance pipeline.}
+% Canonical editable source and its native PowerPoint publication export.
+% Re-export this exact PPTX after editing it; do not use an older final.pdf.
+\includegraphics[width=\textwidth]{figures/pptx/figure3-memory-system-reference1-v7.pdf}
+\caption{Architecture and execution on Alice's March activities.
+The top strip separates User--Agent questions and answers from
+Agent--Memory queries and retrieved memory. The left block shows three
+alternative evidence computations and their cost-aware execution;
+the right block shows the memory state they read and update. First-order
+facts supply evidence, while second-order experience guides access and
+execution effort. The retained state is shown after the March~18 turn:
+blue rows are newly verified durations, the organizer-use report is from
+March~17, and the closed March~18 answer is stored as dialogue, not source
+evidence. The examples use the verified three-activity March scope.}
+\Description{A User, LLM Agent and MemCatalog exchange strip sits above
+three alternative pipelines: organizer lookup returns Ava; independent
+setting judgments produce the outdoor count two; duration comparison
+binds hike-1 to the organizer Ava. A common cost-aware executor reuses
+verified facts, allocates work to missing durations and re-estimates
+after each action. The MemCatalog system returns retrieved memory to
+the agent. Raw sessions, first-order facts and second-order use and
+cost records occupy the right column. First-order facts and second-order
+experience guide grounding within the selected pipeline and cost-aware
+execution. Black labels
+identify alternatives and memory levels; red labels distinguish the
+performance and efficiency techniques.}
 \label{fig:framework_overview}
 \end{figure*}

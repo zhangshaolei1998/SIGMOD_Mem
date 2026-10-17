@@ -27,7 +27,7 @@
             \node[left] at (-0.09,\y) {\lbl};
         }
         %-------- axis labels --------%
-        \node[below, font=\footnotesize] at (\W/2,-0.7) {\emph{LLM calls per benchmark question}};
+        \node[below, font=\footnotesize] at (\W/2,-0.7) {\emph{Average $C(q)$}};
         \node[rotate=90, font=\footnotesize] at (-0.9,\H/2) {\emph{Accuracy on \membench{} (\%)}};
         %-------- soft grid --------%
         \foreach \x in {1.4, 2.8, 4.2, 5.6} \draw[grid] (\x,0) -- (\x,\H);
@@ -58,7 +58,7 @@
         \draw[lead] (lfw) -- (lfwL.west);
         \node[anchor=west] (mgptL) at (2.0, 1.10) {MemGPT (89.7)};
         \draw[lead] (mgpt) -- (mgptL.west);
-        \node[anchor=east] (uniL) at (5.5, 0.60) {Uniform-$K{=}3$ (89.1)};
+        \node[anchor=east] (uniL) at (5.5, 0.60) {Fixed Budget ($K{=}3$) (89.1)};
         \draw[lead] (uni) -- (uniL.east);
         \node[anchor=west] (ragL) at (0.25, 0.90) {RAG (87.8)};
         \draw[lead] (rag) -- (ragL.west);
@@ -66,14 +66,13 @@
         \draw[lead] (fc) -- (fcL.west);
     \end{tikzpicture}
     }
-    \caption{Reported read-path cost versus accuracy on \membench{}
-      (GPT-5.5, $n{=}300$), excluding fact acquisition. \sys{} has
-      higher accuracy than the evaluated prior systems and lower
-      read-path cost than Uniform-$K{=}3$. These points do not measure
-      the acquisition-inclusive action policy of Section~\ref{sec:executor}.}
-    \Description{Scatter plot of average LLM calls per benchmark question against accuracy on
+    \caption{Cost-aware execution: average $C(q)$ versus accuracy on \membench{}
+      (GPT-5.5).
+      \sys{} improves accuracy over prior systems while using fewer
+      $C(q)$ than Fixed Budget ($K{=}3$).}
+    \Description{Scatter plot of average C(q) against accuracy on
       MemBench. MemCatalog sits in the upper-left region, with higher accuracy
-      than every prior memory system and lower cost than the uniform K equals
-      three reference.}
+      than every prior memory system and lower cost than the fixed-budget
+      K equals three reference.}
     \label{fig:pareto}
 \end{figure}

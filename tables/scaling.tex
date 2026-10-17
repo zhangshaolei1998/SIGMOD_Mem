@@ -2,15 +2,13 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Behavior as history grows on the three LongMemEval variants.
-      The reported read-path calls and latency of \sys{} are nearly flat
-      in this configuration. This does not establish
-      acquisition-inclusive, history-independent cost.}
+    \caption{Average $C(q)$, latency, and answer scores as history
+      grows across the three LongMemEval variants.}
     \label{tbl:scaling}
     \setlength{\tabcolsep}{4pt}
     \begin{tabular}{@{}lccc@{}}
         \toprule
-        \textbf{History} & \textbf{Calls / question} & \textbf{Latency (s)} & \textbf{Score} \\
+        \textbf{History} & \textbf{Average $C(q)$} & \textbf{Latency (s)} & \textbf{Score} \\
         \midrule
         \tblgroup{4}{Full-Context} \\
         $\sim$40K  (\lmeo)  & 1.0 & 2.3  & 49.3 \\

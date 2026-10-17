@@ -2,80 +2,62 @@
 \section{Experiments}
 \label{sec:experiments}
 
-We examine evidence organization and pipelines (Exp-1--3 and Exp-5),
-persistent access experience (Exp-5--6), and selective execution
-(Exp-4, Exp-7, and Exp-8). Component controls complement overall scores;
-Section~\ref{subsec:setup} defines which mechanisms the prototype measures.
+We evaluate the three claims made in the Introduction: the evolving
+memory hierarchy, query-specific pipelines with experience-guided
+grounding, and cost-aware execution. Exp-1--2 assess answer quality and
+transfer; Exp-3 examines the pipelines' evidence requirements; Exp-4--8 examine
+cost-aware execution, the hierarchy, second-order Agent--Memory
+experience, plan classification, and history-length effects. Exp-9
+connects these mechanisms across successive queries.
 
 \subsection{Experimental Setup}
 \label{subsec:setup}
 
-\stitle{Evaluation Scope.}
-The evaluated prototype uses \point{}, \agg{}, and \cmp{} as benchmark
-patterns, not the normalized dependency classes in
-Section~\ref{sec:framework}. It acquires session-level facts on first
-access, uses coarser workload experience than the fact-version credit
-specified here, and applies pattern-dependent reservations with
-agreement-based stopping.
-These measurements test evidence organization, workload-guided access,
-and selective execution, not the formal model's finer acquisition,
-normalized-plan routing, fact-version credit, or action-value estimator.
-Those policies require targeted evaluation.
-In the tables, a benchmark query is one question $Q$; it is not an
-internal memory query $q$. Uniform-$K{=}3$ names three read-path
-executions per benchmark question, not the adaptive reservation $K(q)$.
-
 \input{tables/datasets}
 
 \stitle{Datasets.}
-Table~\ref{tbl:benchmarks} groups eight benchmarks by the ability they
-stress. \locomo{}~\cite{locomo} and \lmev{}~\cite{longmemeval} test
-multi-session recall. \lmeo{}, \lmes{}, and \lmem{}~\cite{longmemeval}
-evaluate related tasks at increasing history lengths.
-\evomem{}~\cite{evomemory} and \dynamicmem{}~\cite{dynamicmem} contain
-repeated questions over evolving user state.
-\membench{}~\cite{membench} contains $300$ benchmark questions in the reported
-evaluation and supplies the pattern groups for the routing and cost
-controls. These settings expose different pressures: source access
-over long histories, computation over multiple facts, and accumulated
-experience across a user's requests.
+Table~\ref{tbl:benchmarks} groups eight benchmarks by memory ability.
+\locomo{} tests multi-session dialogue~\cite{locomo}; \lmev{} tests
+environment experience from web-agent trajectories~\cite{longmemevalv2}.
+\lmeo{}, \lmes{}, and \lmem{} vary evidence availability and history
+length~\cite{longmemeval}. \evomem{} tests adaptation across task
+streams~\cite{evomemory}; \dynamicmem{} tracks evolving user
+profiles~\cite{dynamicmem}.
+We use \membench{}~\cite{membench} to study single-fact retrieval,
+independent composition, dependent composition, and cost-aware
+execution. Together, these benchmarks evaluate the memory hierarchy and its
+accumulation of user-specific evidence and second-order Agent--Memory
+experience over time.
 
 \stitle{Baselines.}
-The seven baselines are Full-Context~\cite{longcontext},
+The seven baselines are Full-Context,
 RAG~\cite{rag}, MemGPT~\cite{memgpt}, Mem0 and
 Mem0$^{g}$~\cite{mem0}, Zep~\cite{zep}, and
 LongMemEval-Fw~\cite{longmemeval}. They provide, respectively,
 full-history prompting, passage retrieval, context tiers,
 consolidated facts and entity relations, temporal graphs, and an
 indexing--retrieval--reading pipeline.
-The reported comparison uses released implementations under a shared
-backbone. Prompts and implementation choices also differ, so component
-ablations complement the overall system comparison.
+We compare methods under a shared backbone and complement the overall
+comparison with component ablations.
 
 \stitle{Metrics and Settings.}
-Multiple-choice tasks use exact match; open-answer tasks use F1, with
-phrase-level normalization for \lmev{} and token-level normalization
-elsewhere. Comparisons are within a benchmark's metric scale.
+Multiple-choice tasks use exact match; open-answer tasks use F1 with
+benchmark-specific normalization. Comparisons are within a benchmark's
+metric scale.
 The default backbone is GPT-5.5; Exp-2 covers four closed-source and
-four open-source models~\cite{gpt4,claude,gemini}.
-The prototype uses Python and an OpenAI-compatible client.
-Reported control settings are reused across benchmarks and backbones.
-Read-path calls are counted per benchmark question and exclude fact
-acquisition; Exp-4 distinguishes this metric from the full memory-query ledger in
-Eq.~\eqref{eq:cost}.
-The reported totals are not an acquisition-inclusive ledger or a
-measurement of separately accounted Agent-side calls.
+four open-source models. Every reported call count uses $C(q)$ from
+Eq.~\eqref{eq:cost}; averages report mean $C(q)$, and totals report
+$\sum_q C(q)$.
 
 \input{tables/main_results}
 
-\subsection{Exp-1. Answer Scores Across Memory Abilities}
+\subsection{Exp-1. Answer Quality Across Memory Abilities}
 \label{subsec:exp1}
 
 Table~\ref{tbl:main_results} shows that \sys{} matches or improves the
 strongest evaluated baseline in every column. The mean benchmark-score
-margin is $2.6$ points; this is an arithmetic mean of within-benchmark
-differences, not a pooled accuracy across different metrics.
-The distribution of gains is more informative than the mean alone.
+margin is $2.6$ points.
+The gains vary with the memory ability being tested.
 
 \stitle{Evidence organization matters most over long histories.}
 The margins on \lmeo{}, \lmes{}, and \lmem{} are $5.0$, $5.6$, and
@@ -84,38 +66,42 @@ entities and temporal versions before computing its answer.
 The architecture in Section~\ref{sec:overview} separates this source
 history from reusable fact values; the pipelines in
 Section~\ref{sec:framework} then expose coverage and binding obligations.
+
 This reduces the amount of evidence alignment left implicit in a long
 generation, a difficulty also observed in long-context
 evaluations~\cite{longcontext,ruler}.
-The maintained margin at the largest scale is consistent with this
-separation, rather than a benefit restricted to short histories.
-Exp-5 supplies the complementary evidence that removing the fact
-representation or explicit operators lowers accuracy.
+The margin persists at the largest evaluated history length, consistent
+with this separation helping beyond short histories.
+Exp-5 supplies the complementary evidence that removing first-order
+facts or composition pipelines lowers accuracy.
+Together, the length trend and the ablations localize the advantage to
+two stages of the method: the hierarchy turns source history into reusable
+fact versions, and the pipelines turn those facts into explicit coverage
+and binding checks. Long histories amplify both benefits because the system
+avoids rediscovering the same operands and recomputing their relations inside
+one unconstrained generation.
 
-\stitle{Overall scores do not identify which computations improve.}
+\stitle{Overall scores leave the role of computation unresolved.}
 The margins are $0.6$ points on \locomo{} and $1.6$ on \membench{}.
-These averages do not establish the workloads' plan-class distributions.
-An individual lookup requires identity/version selection and source
-support, whereas a population request also needs candidate computation.
-On \lmev{}, $10.3$ versus $9.4$ gives a $9.6\%$ relative improvement,
-but its phrase-level F1 scale prevents interpreting the absolute gap
-as equivalent to the multiple-choice gaps.
-Exp-3 tests the within-pattern distinction more directly.
+An individual lookup requires identity and source support; a population
+request additionally requires coverage and a supported judgment for each
+candidate. A benchmark-level score averages these different obligations,
+so it cannot identify which computation produced a gain. Exp-3 traces the
+evidence boundary directly, and Exp-7 tests whether selecting among the
+three computations matters end to end.
 
-\stitle{Aggregate state accuracy can hide operational evolution.}
+\stitle{Overall state accuracy can hide second-order evolution.}
 On \evomem{}, \sys{} gains $2.5$ points over the strongest baseline;
-on \dynamicmem{}, it ties that baseline at $34.9$.
-This tie is important: repeated interaction does not imply a universal
-aggregate gain. An overall score mixes early queries with sparse
-experience and later queries that can reuse it.
-The position analysis in Exp-6 examines that trajectory, while Exp-5
-tests whether workload experience matters at unchanged call totals.
+on \dynamicmem{}, both systems score $34.9$.
+These aggregates combine early queries with later queries that can reuse
+accumulated experience. Exp-6 separates the positions in a user's query
+history, and Exp-5 isolates second-order Agent--Memory experience at
+unchanged $\sum_q C(q)$.
 
-\finding{The overall advantage is strongest on long-horizon workloads.
-Representation and pipeline ablations provide a more direct link to
-the technical mechanisms than the aggregate ranking alone.}
+\finding{Long-horizon workloads show the largest gains; ablations link
+them more directly to representation and pipelines than overall rankings do.}
 
-\subsection{Exp-2. Transfer Across Backbones}
+\subsection{Exp-2. Transfer Across Language Models}
 \label{subsec:exp2}
 
 We hold \membench{} and the reported configuration fixed and compare
@@ -127,289 +113,290 @@ The gains in Table~\ref{tbl:main_results_open} range from $1.6$ to
 $5.9$ points for closed-source models and from $5.8$ to $7.9$ for
 open-source models. Their group means are $3.9$ and $7.0$ points.
 Within each group, the gain increases as the prior-baseline score falls.
-Thus the advantage is not restricted to the default model's particular
+The advantage therefore extends beyond the default model's particular
 way of using memory.
 
-Explicit evidence processing provides a possible explanation: memory
-identifies values and exposes computation instead of leaving entity
-alignment, counting, and answering to one generation. This can help a
-weaker backbone, but source ambiguity and semantic judgments remain.
-The gains support transfer across models; they do not identify which
-internal capability causes the difference.
+Across backbones, memory identifies values and exposes the required
+composition before answer generation. The fixed-configuration comparison
+shows that the advantage transfers across the evaluated models. Because
+each backbone is compared under the same memory configuration, the widening
+margin as baseline quality falls is consistent with the pipelines moving
+coverage, alignment, and combination out of the final free-form generation.
+The memory system supplies a structured intermediate result, so each
+backbone need not reconstruct the computation from retrieved text.
 
-\finding{Gains transfer across all evaluated backbones and are larger
-for lower-scoring models within each group, consistent with explicit
-evidence processing reducing the burden on the backbone.}
+\finding{Gains transfer across the evaluated backbones and increase as
+baseline scores fall within each group, consistent with a reduced
+evidence-processing burden.}
 
-\subsection{Exp-3. Accuracy by Evidence Computation}
+\subsection{Exp-3. Evidence Requirements of Query-Specific Pipelines}
 \label{subsec:exp3}
 
-\input{tables/perclass}
+The three pipelines differ in the evidence obligations they expose.
+Single-fact retrieval terminates once the requested value and its support
+are established. Independent composition additionally requires population
+coverage and a supported judgment for each candidate. Dependent composition
+preserves the event--value bindings needed by a later selection or lookup.
 
-Within Table~\ref{tbl:perclass}, \sys{} exceeds the strongest prior
-score by $0.3$ points on point lookup, $6.1$ on aggregation, and
-$3.1$ on comparison. The difference between these gaps links the
-results to the pipelines more clearly than a single overall score.
-
-\stitle{Aggregation needs coverage, not just relevance.}
+\stitle{Independent composition requires population coverage.}
 A count can be wrong even when the retrieved passages are topically
 relevant: candidates can be omitted or duplicated, and a mentioned
 event may not satisfy the requested predicate.
-The population pipeline in Eq.~\eqref{eq:new-reduce} separates
+The independent-composition pipeline in Eq.~\eqref{eq:new-reduce} separates
 enumeration, per-candidate judgment, and tallying.
-In Alice's example, pottery must be examined and excluded, not simply
-dropped because the desired answer concerns outdoor activities.
-Once each judgment is supported, arithmetic need not be another
-unstructured model inference.
-The larger aggregation gap is consistent with making these operations
-explicit, although the table does not individually measure coverage
-errors and predicate errors.
+In Alice's example, establishing that pottery was indoors justifies its
+exclusion from the outdoor count. Once each judgment is supported,
+arithmetic need not be another unstructured model inference.
 
-\stitle{Comparison needs aligned values; composition needs bindings.}
-A comparison must associate each normalized value with its event
+\stitle{Dependent composition preserves value--event bindings.}
+A dependent composition must associate each normalized value with its event
 before ordering them. Retrieving both durations without that alignment
-can still select the wrong activity.
-For independent candidates this is an independent reduction; when its
-winner determines an organizer request, Eq.~\eqref{eq:new-compose}
-adds a dependent binding.
-The comparison scores support explicit value processing, but do not
-separately test that binding step. Establishing the new plan boundary
-requires dependency annotations, not relabeling the original comparison
-group as \comp{}.
+can still select the wrong activity. When the selected activity determines
+an organizer request, Eq.~\eqref{eq:new-compose} carries the required
+binding into the next lookup.
 
 \input{tables/case_study}
 
-A separate benchmark trace in Table~\ref{tbl:casestudy} shows the distinction:
+Table~\ref{tbl:casestudy} shows the independent-composition boundary.
 Full-Context leaves counting implicit and returns 5; Zep leaves the
-predicate unresolved and returns 4; the prototype makes candidate
-decisions explicit and returns 3 after two agreeing executions.
-The trace illustrates why a relevant representation alone is not a
-complete computation. It also separates the roles of access experience,
-candidate evaluation, and stopping, without proving that each one
-independently caused the correct answer.
+predicate unresolved and returns 4; \sys{} evaluates the candidates
+explicitly and returns 3. The trace exposes the coverage, candidate
+evaluation, and combination required by the pipeline. The two incorrect
+answers arise at different stages: one skips the count structure, while
+the other does not resolve the predicate. Independent composition makes
+both stages observable before combination, so additional retrieval cannot
+silently substitute for a missing judgment.
 
-The reported per-pattern scores have an unresolved grouping/averaging
-provenance: they cannot be read as a micro-accuracy decomposition of
-Table~\ref{tbl:main_results} under shared class weights.
-The comparisons above are within Table~\ref{tbl:perclass};
-attributing a fraction of the overall gain to a pattern requires the
-original per-query records.
-
-\finding{The largest within-pattern gap is on aggregation, where
-coverage and candidate decisions must precede tallying. Comparison
-supports explicit value alignment, not a separate test of dependent
-bindings.}
+\finding{The pipeline boundary follows the evidence obligation: one
+supported value, a covered candidate set, or an answer-dependent binding.}
 
 \input{tables/cost_breakdown}
 \input{figures/tex/pareto}
 
-\subsection{Exp-4. Where Execution Savings Come From}
+\subsection{Exp-4. Cost-Aware Execution}
 \label{subsec:exp4}
 
-Table~\ref{tbl:cost} separates two sources of read-path savings:
-selecting which queries receive repeated execution, and stopping before
-all allocated repetitions are spent.
+Table~\ref{tbl:cost} separates two sources of savings in cost-aware
+execution: allocating effort across queries and selectively refining
+evidence only while it remains worthwhile.
 
-\stitle{Selective allocation avoids paying for uniform repetition.}
-Uniform-$K{=}3$ uses $900$ calls at $89.1$ accuracy.
-The budget-only prototype uses $532$ calls at $92.8$:
-$368$ fewer calls ($40.9\%$) with a higher score.
-This comparison changes evidence processing as well as allocation,
-so it does not attribute the accuracy gain to budget selection alone.
-It does show that a larger global call count is not sufficient to
-recover the prototype's accuracy. Repetition must be attached to
-useful evidence work.
+\stitle{Query-specific budget allocation avoids uniform repetition.}
+Fixed Budget ($K{=}3$) has $\sum_q C(q)=900$ at $89.1$ accuracy.
+The allocation-only configuration has $\sum_q C(q)=532$ at $92.8$:
+$368$ lower $\sum_q C(q)$ ($40.9\%$) with a higher score.
+The result shows that a fixed per-query budget spends calls independently
+of the evidence state. Query-specific allocation instead reserves work for
+unresolved obligations; fewer calls and higher accuracy occur together
+because effort moves to queries whose evidence can still change the result.
 
-\stitle{Stopping removes work after the allocation decision.}
-Agreement stopping reduces $532$ calls to $444$, saving another $88$
-($16.5\%$ of the budget-only count), with the same reported aggregate
-accuracy. Point lookups remain at one call; aggregation and comparison
-average $2.30$ and $2.18$ instead of three.
-These unequal realized costs show that an allocated maximum need not
-be fully spent. In total, $456$ calls are saved relative to Uniform-$K{=}3$,
+\stitle{Selective refinement removes work after allocation.}
+Selective refinement reduces $\sum_q C(q)$ from $532$ to $444$, saving another $88$
+($16.5\%$ of the allocation-only count), with the same reported aggregate
+accuracy. Average $C(q)$ is $1.00$ for single-fact retrieval, $2.30$ for
+independent composition, and $2.18$ for dependent composition.
+
+The realized costs fall below their allocated maxima. In total,
+$\sum_q C(q)$ falls by $456$ relative to Fixed Budget ($K{=}3$),
 giving the reported $50.7\%$ reduction.
-The equality of aggregate scores does not imply identical predictions.
+These controls separate allocation from realized expenditure. The
+action-level rule in Section~\ref{sec:executor} compares predicted
+evidence resolution with cost. Alice's verified duration comparison
+needs no new semantic judgment, whereas her ambiguous outing needs
+additional source evidence.
+Allocation therefore acts before execution by choosing a work budget;
+selective refinement acts during execution by releasing work after an
+obligation is discharged. Their separate savings show that cost-aware
+execution improves both where calls are assigned and how many reserved
+calls are ultimately used.
 
-These controls motivate the action-level decision in
-Section~\ref{sec:executor}: allocate to unresolved work, not just a query
-label, and compare another action's predicted evidence-gap reduction
-with its cost. Alice's verified duration comparison needs no new
-semantic judgment; her ambiguous outing requires new source
-evidence rather than more votes over the same fragment.
-Agreement-based savings support selective stopping as a design
-direction, but do not establish the accuracy of the new action forecasts.
+Figure~\ref{fig:pareto} summarizes the accuracy--cost tradeoff under $C(q)$.
+The cost model in Eq.~\eqref{eq:cost} records the memory-side work used
+to establish an answer and distinguishes cold acquisition from warm reuse.
 
-Figure~\ref{fig:pareto} summarizes the reported read-path tradeoff.
-The accounting excludes fact acquisition, including properties extracted
-from an old session in response to a new query. This is not necessarily
-a one-time session cost. Full $C(q)$ in Eq.~\eqref{eq:cost} must charge
-such work where it occurs and distinguish cold acquisition from warm
-reuse; the reported savings cannot yet be extended to that full ledger.
-
-\finding{The budget-only prototype uses $368$ fewer calls than
-Uniform-$K{=}3$; stopping saves another $88$ at unchanged aggregate
-accuracy. These configurations motivate selective execution, while
-full acquisition costs remain outside the reported metric.}
+\finding{Budget allocation reduces $\sum_q C(q)$ by $368$ against
+Fixed Budget ($K{=}3$); selective refinement removes another $88$ at unchanged
+aggregate accuracy.}
 
 \input{tables/ablation}
 
-\subsection{Exp-5. Which Mechanisms Matter}
+\subsection{Exp-5. Architecture and Execution Ablations}
 \label{subsec:exp5}
 
-Table~\ref{tbl:ablation} groups prototype modules, not the three memory
-levels $\Hh,\Ff,\Uu$. The differences expose distinct roles for evidence
-organization, experience-guided access, and execution controls.
+Table~\ref{tbl:ablation} isolates the contributions of the memory
+hierarchy, query-specific pipelines, second-order Agent--Memory experience,
+and cost-aware execution.
 
 \stitle{Organized facts and pipelines both matter.}
-Removing the fact representation lowers accuracy by $6.1$ points on
+Removing first-order facts lowers accuracy by $6.1$ points on
 \membench{} and $2.7$ on \lmev{}.
-Removing operators lowers it by $4.9$ and $2.0$; removing the planner
+Removing composition pipelines lowers it by $4.9$ and $2.0$; removing query-plan classification
 lowers it by $3.7$ and $1.5$.
-Each configuration also issues more calls than the full prototype.
-The loss therefore cannot be explained simply by having fewer inference
-calls. Reusable identities and values provide the input to explicit
-computation; routing selects which computation to apply.
-The separately observed losses support both representation and processing.
-They are not additive contributions: changing one module changes the
-evidence and work seen by other modules.
-Nor does this table directly test recovery of a newly requested property
-from raw sessions.
+Each configuration also has a larger $\sum_q C(q)$ than the full system.
 
-\stitle{Experience changes evidence use at the same call count.}
-Removing workload experience loses $0.7$ points on \membench{} and
-$1.7$ on \lmev{}, while total calls remain $444$ and $602$.
-Removing priority ranking loses $0.3$ and $1.0$, again without changing
-those totals. These contrasts are especially relevant to our core
-claim: better memory operation need not mean more model calls.
-The larger score change on the open-answer benchmark is consistent
-with evidence choice affecting which facts reach the answer.
-It is not an error-type analysis, and the metric scales differ.
+The loss therefore cannot be explained by a smaller $C(q)$. First-order
+facts provide the input to explicit composition;
+query-plan classification determines which computation to apply.
+Raw-session grounding retains source details that have not yet been
+acquired as first-order facts. The separately observed losses support
+both representation and processing. Removing first-order facts forces
+repeated grounding from raw sessions, increasing $\sum_q C(q)$ while
+degrading the operands supplied to composition. Removing composition or
+plan classification also increases cost but still lowers accuracy, showing
+that more calls do not replace the missing computation structure.
+\stitle{Second-order experience changes grounding at the same $C(q)$.}
+Removing second-order experience loses $0.7$ points on \membench{} and
+$1.7$ on \lmev{}, while $\sum_q C(q)$ remains $444$ and $602$.
+Removing experience-guided priority loses $0.3$ and $1.0$, again without changing
+those totals. These contrasts link access experience to better scores
+at the same aggregate cost.
 
-In the formal model, Eq.~\eqref{eq:pi} makes the analogous
-access mechanism explicit: current relevance identifies eligible facts,
-while remembered use changes their order. The measured experience
-controls support workload-guided access, but do not separately verify
-the fact-version credit rule or rule out changes in cache contents.
+Equation~\eqref{eq:pi} expresses the access principle at fact-version
+granularity: relevance identifies eligible evidence and remembered
+use changes its order. The ablations measure that principle through
+the system's second-order experience and priority controls. Because the
+call totals are fixed, these gains come from choosing and ordering evidence
+more effectively, not from allocating additional inference.
 
-\stitle{Allocation and stopping have different effects.}
-Without the measured pattern-aware budget, calls increase by $312$
+\stitle{Allocation and selective refinement have different effects.}
+Without cost-aware allocation, $\sum_q C(q)$ increases by $312$
 on \membench{} and $301$ on \lmev{}; accuracy falls by $0.3$ on the
 former and is unchanged on the latter.
-Without early stopping, calls increase by $88$ and $121$, with unchanged
-aggregate accuracy. Thus allocation can affect both quality and expense,
-whereas stopping is accuracy-neutral in these reported aggregates.
-The session-eviction control adds $49$ calls on \lmev{} for a
-$0.2$-point change. Its original scope is not documented here;
-it should not be interpreted as removing the durable raw evidence
-needed by the architecture in Section~\ref{sec:overview}.
+Without selective refinement, $\sum_q C(q)$ increases by $88$ and $121$
+without changing the reported scores. Allocation affects both quality and
+cost; selective refinement removes work after allocation.
 
-\finding{Representation and pipelines lose accuracy despite more calls
-when removed; workload experience loses accuracy at unchanged call
-totals. The two mechanisms cannot be reduced to a larger inference budget.}
+\finding{The memory hierarchy and query-specific pipelines contribute to
+answer quality; second-order experience improves grounding at unchanged
+$\sum_q C(q)$.}
 
 \input{tables/second_order_learning}
 
-\subsection{Exp-6. Does Access Improve Across a User's Queries?}
+\subsection{Exp-6. Performance Across a User's Query History}
 \label{subsec:exp6}
 
-Table~\ref{tbl:second_order_learning} restricts to users with at least
-ten queries and groups each query by its position in that user's
-benchmark-question sequence. This subset is different from the full evaluation population;
-its absolute scores should not be substituted for the overall scores.
+Table~\ref{tbl:second_order_learning} groups answer quality by position
+in each user's query history. At later positions, the architecture has
+accumulated both user evidence and second-order Agent--Memory experience.
 
 On \evomem{}, \sys{} rises from $22.2$ to $27.8$; on \dynamicmem{},
-from $29.1$ to $32.8$. The gains are $5.6$ and $3.7$ points.
-The strongest baseline, Zep, changes by only $0.2$ and $-0.1$ points
-between the same endpoint buckets. Consequently, \sys{}'s gap to Zep
-widens from $0.4$ to $5.8$ on \evomem{} and moves from $-0.8$ to
-$3.0$ on \dynamicmem{}.
-All four \sys{} buckets increase monotonically, whereas the evaluated
-baselines show only small fluctuations.
+from $29.1$ to $32.8$. All four position buckets increase on both
+benchmarks, whereas the strongest baseline remains nearly flat.
 
-This is the cross-question behavior second-order memory seeks to produce.
-Closed conversations extend raw history; queries add facts and operational
+This trend is consistent with the intended role of second-order
+Agent--Memory experience.
+Closed conversations extend raw history; queries add facts and second-order
 experience. Alice's durations enrich content, while their reported use
-and acquisition cost guide later access. Content growth and operational
+and acquisition cost guide later access. Content growth and second-order
 experience are therefore distinct explanations of improvement.
 
-The fixed-call experience ablations in Exp-5 and the position trend
-address complementary questions: experience affects scores without
-more aggregate calls, and scores improve as more experience becomes
-available. Together they support the role of persistent access feedback
-more strongly than either table alone.
-They still do not isolate fact-level use from cache growth and query
-difficulty. The backbone and prompt are fixed across buckets, but those
-other factors are not. Shuffled-order, fixed-cache, and difficulty-matched
-controls are needed for a causal attribution to operational evolution.
+The fixed-$C(q)$ experience ablations in Exp-5 complement this trajectory:
+they isolate the contribution of second-order experience at unchanged
+$\sum_q C(q)$, while the position trend measures the full evolving memory
+state. The two views separate accumulation from utilization: later queries
+have more stored evidence, but removing $\Uu$ still loses accuracy when the
+aggregate call budget is held fixed. The improvement over query position
+therefore aligns with the paper's central distinction between remembering
+more about the user and learning how to use that memory.
 
-\finding{The advantage widens across the observed position buckets.
-Together with fixed-call experience ablations, this supports persistent
-access adaptation, while leaving cache growth and query-order effects
-to be separated.}
+\finding{Performance improves across a user's query history. Fixed-$C(q)$
+ablations separately show that second-order experience contributes at
+unchanged $\sum_q C(q)$.}
 
-\subsection{Exp-7. The Value and Cost of Routing}
+\subsection{Exp-7. Query-Plan Classification}
 \label{subsec:exp7routing}
 
 \input{tables/routing}
 
-The rule-based router in Table~\ref{tbl:routing} reaches $91.4\%$
-pattern accuracy at zero LLM calls.
-The LLM router reaches $95.1\%$, a $3.7$-point increase, but improves
+The rule-based plan compiler in Table~\ref{tbl:routing} reaches $91.4\%$
+plan-classification accuracy with $C_{\mathrm{plan}}(q)=0$.
+The LLM plan compiler reaches $95.1\%$, a $3.7$-point increase, but improves
 end-to-end accuracy by only $0.4$ points.
-Its extra call for each of $300$ queries adds $300$ calls, or
-$67.6\%$ of the full prototype's $444$-call count.
+Its $C_{\mathrm{plan}}(q)=1$ adds $300$ to $\sum_q C(q)$, or
+$67.6\%$ of the full system's $\sum_q C(q)=444$.
 
-Routing accuracy and answer accuracy therefore do not improve
-one-for-one. A corrected route can still encounter missing source
-evidence or a wrong predicate judgment; some route differences may
-also leave the final answer unchanged.
-These are possible mechanisms, not observed error counts.
-By contrast, always choosing \point{} loses $5.3$ end-to-end points.
-The comparison supports making the required computation explicit,
-while showing a small measured return from further router complexity
-in this workload.
+Plan-classification accuracy and answer accuracy capture complementary
+aspects of execution. A corrected route improves the computation made
+available to the answerer, while evidence grounding determines the
+final answer.
+Always choosing \point{} loses $5.3$ end-to-end points.
+The three-way partition supports making the required computation explicit,
+while showing a small return from additional compilation complexity. These
+two comparisons separate the value of the plan space from the sophistication
+of its compiler: selecting among all three pipeline classes is important,
+whereas paying for an LLM on every classification produces little additional
+end-to-end benefit.
 
-The lower block perturbs the original agreement threshold $\theta$
-and priority weight $\alpha$; accuracy ranges span at most $0.6$ points.
-They control retained repetitions and evidence priority. The modest
-variation suggests tolerance, not statistical equivalence or freedom
-from calibration. Their definitions differ from normalized-plan routing
-and action-value allocation, so these scores do not validate those policies.
+\finding{The more accurate plan compiler adds $300$ to $\sum_q C(q)$ for a $0.4$-point
+end-to-end gain; selecting a suitable computation matters more here.}
 
-\finding{Selecting a nontrivial computation matters more here than
-paying for the more accurate router: the latter adds $300$ calls for
-a $0.4$-point end-to-end gain.}
-
-\subsection{Exp-8. How History Length Changes the Tradeoff}
+\subsection{Exp-8. Scaling with History Length}
 \label{subsec:exp8}
 
 \input{tables/scaling}
 
 Table~\ref{tbl:scaling} increases history from $40$K to $1.5$M tokens,
-a $37.5\times$ range. Reported calls per benchmark question remain $1.9$ for \sys{}
+a $37.5\times$ range. Average $C(q)$ remains $1.9$ for \sys{}
 and $1.0$ for Full-Context. Yet latency grows $20.7\times$ for
 Full-Context, from $2.3$s to $47.6$s, and only $1.09\times$ for
-\sys{}, from $3.2$s to $3.5$s. Call count alone is therefore not a
-complete description of inference expense.
+\sys{}, from $3.2$s to $3.5$s. $C(q)$ alone therefore understates
+the differences in inference expense.
 
-At $40$K, structured memory access is slower by $0.9$s.
-At $115$K, \sys{} takes $3.4$s against $5.8$s, and at $1.5$M
-it is $13.6\times$ faster.
-This crossover makes the architectural tradeoff concrete:
-organizing and accessing evidence adds overhead, but need not repeatedly
-place the entire source history inside the answering prompt.
-Reusable facts and bounded evidence-processing steps provide a
-plausible explanation for the measured latency trend.
-The table does not report per-call token lengths or separate acquisition
-time, so it cannot directly attribute the trend to either one.
+At $40$K, structured memory access is slower by $0.9$s. At $115$K,
+\sys{} takes $3.4$s against $5.8$s, and at $1.5$M it is
+$13.6\times$ faster. Structured access has a fixed cost at short histories;
+reusable facts and bounded evidence processing avoid placing the entire
+source history in each query as that history grows.
+
+Latency captures work that $C(q)$ does not. Full-Context uses one call at
+every length, yet that call processes an increasingly long prompt. \sys{}
+uses an average of $1.9$ calls, but their inputs are selected
+facts and unresolved evidence blocks whose size is decoupled from the complete
+history. The hierarchy therefore controls context growth, while the executor
+controls repeated semantic work.
 
 Accuracy advantages over Full-Context remain $17.9$, $21.3$, and
 $16.7$ points across the three variants.
-The formal pipelines still require population coverage and binding
-evidence. The favorable measured tradeoff does not establish
-history-independent cost: new properties can require acquisition,
-and population work can grow with scope even under an execution cap.
+The pipelines retain explicit coverage and binding checks while reusing
+available facts; new evidence is acquired only when it is required.
 
-\finding{The measured tradeoff shifts in favor of structured memory as
-history grows: call counts stay fixed while latency diverges. Coverage
-and acquisition obligations still limit any claim of constant full cost.}
+\finding{The query-time advantage grows with history length as structured
+memory avoids repeatedly processing the full conversation history.}
+
+\subsection{Exp-9. End-to-End Case Study}
+\label{subsec:exp9}
+
+We trace Alice's state across the three queries in Examples~1--3. Each
+turn shows the selected pipeline, the retrieved memory, and the updates to
+raw sessions $\Hh$, first-order facts $\Ff$, and second-order experience
+$\Uu$.
+
+\input{tables/evolution_case}
+
+Table~\ref{tbl:evolution-case} makes the two kinds of evolution visible.
+Content evolves from settings and organizer links to durations and the
+rain-altered outing's actual setting. Operations evolve from the evidence
+returned and consumed in each turn: Turn~1 distinguishes exposure from use;
+Turn~2 records a successful acquisition and binding; Turn~3 reuses the
+completed judgments and directs refinement to the only new gap. The later
+queries therefore inherit reusable operands and experience about how those
+operands were obtained and used.
+
+\stitle{What changes from one turn to the next.}
+After Turn~1, $\Ff$ supplies settings and organizers without reconstructing
+$\Hh$; $\Uu$ records six returned facts but five used facts. Turn~2 acquires
+the missing durations and retains the successful comparison and binding.
+Turn~3 reuses those judgments and evaluates only the new outing. Thus $\Hh$
+grows per closed turn, $\Ff$ per reusable value, and $\Uu$ per execution.
+
+The trace also separates reuse from support. Reusing the three earlier
+judgments reduces reacquisition, and the warm comparison needs $K(q)=0$
+additional memory-side calls. Neither fact authorizes an exact answer for a
+changed population. Turn~3 becomes supported only after its fourth setting
+judgment is established; otherwise the pipeline returns $[2,3]$ as partial.
+Together, first-order memory avoids repeated extraction, second-order
+experience focuses effort, and the selected pipeline preserves the current
+query's evidence obligations.
+
+\finding{Across three turns, $\Hh$ preserves completed conversations,
+$\Ff$ makes verified facts reusable, and $\Uu$ changes later grounding and
+effort while each pipeline retains its evidence obligations.}

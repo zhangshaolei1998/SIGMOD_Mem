@@ -7,20 +7,19 @@
 %%   \documentclass[sigconf, anonymous, review]{acmart}
 %% For camera-ready, use:
 %%   \documentclass[sigconf]{acmart}
-\documentclass[sigconf, anonymous, review]{acmart}
+% nonacm suppresses publication boilerplate in this working review draft;
+% the sigconf body typography and page geometry are unchanged.
+\documentclass[sigconf, anonymous, review, nonacm]{acmart}
 
 \AtBeginDocument{%
   \providecommand\BibTeX{{Bib\TeX}}}
 
-%% Rights management information. Replace with the values supplied by ACM
-%% after the rights form is completed.
-\setcopyright{acmlicensed}
-\copyrightyear{2026}
-\acmYear{2026}
-\acmDOI{XXXXXXX.XXXXXXX}
-\acmConference[SIGMOD '26]{Proceedings of the 2026 International Conference on
-  Management of Data}{June 14--19, 2026}{Bengaluru, India}
-\acmISBN{978-1-4503-XXXX-X/2026/06}
+%% Anonymous review copy: omit placeholder publication and rights metadata.
+\setcopyright{none}
+\settopmatter{printacmref=false}
+\acmDOI{}
+\acmISBN{}
+\acmConference[SIGMOD submission]{SIGMOD submission}{}{}
 
 %% Paper-specific commands, colors, and macros.
 \input{_commands}
@@ -41,28 +40,24 @@
 \renewcommand{\shortauthors}{Anonymous Author(s)}
 
 \begin{abstract}
-Long-term LLM agents need memory that evolves both its content and its
-operations. We introduce \sys{}, a continually evolving memory management
-system with three levels. Raw sessions accumulate closed User--Agent
-conversations. First-order memory acquires source-backed user facts on
-demand. Second-order memory retains Agent--Memory experience: returned
-evidence, validated use credit, and execution outcomes/cost. First-order
-facts help the agent understand the user; second-order experience helps
-memory understand how to serve the user. For performance, single-fact
-retrieval, independent composition, and dependent composition partition
-normalized finite acyclic evidence plans and execute with
-experience-guided grounding. For efficiency, current evidence gaps and
-historical action outcomes determine a query-specific call reservation
-and whether further work is worthwhile. Unmet evidence obligations
-remain explicit when execution stops. The prototype evaluation covers
-eight long-term memory benchmarks. Its reported scores match or improve
-the strongest evaluated prior memory system on every benchmark, by an
-average of $2.6$ points and up to $5.6$ points on \lmes{}.
-On \membench{}, the reported configuration uses $50.7\%$ fewer read-path
-LLM calls than a Uniform-$K{=}3$ reference while attaining higher accuracy.
-These measurements test prototype evidence processing, workload-guided
-access, and selective execution; finer routing, fact-version credit,
-and action-value forecasts require targeted evaluation.
+Long-term LLM agents need memory that evolves in both what it stores and
+how it uses stored evidence. Existing systems primarily retain user facts,
+leaving the experience of memory use unrecorded, and commonly apply one
+retrieval path to queries with different evidence requirements. We present
+\sys{}, a continually evolving memory management system for LLM agents.
+Its hierarchy retains raw User--Agent sessions, acquires source-backed
+first-order facts on demand, and records second-order Agent--Memory
+experience, including returned evidence, validated use, action outcomes,
+and cost. For performance, normalized finite acyclic plans are partitioned
+into single-fact retrieval, independent composition, and dependent
+composition; each pipeline makes its coverage and binding obligations
+explicit, while second-order experience guides grounding. For efficiency,
+cost-aware execution combines current evidence gaps with historical action
+outcomes to allocate a query-specific call budget and stop when further
+work is not worthwhile. Across eight long-term memory benchmarks, \sys{}
+matches or improves the strongest evaluated prior system on every benchmark
+by $2.6$ points on average and, on \membench{}, reduces memory-side LLM
+calls by $50.7\%$ while attaining higher accuracy.
 \end{abstract}
 
 %% CCS concepts. Generated from https://dl.acm.org/ccs.
@@ -110,10 +105,9 @@ and action-value forecasts require targeted evaluation.
 \input{secs/07experiments}
 \input{secs/08related}
 
-\begin{acks}
-Anonymized for submission.
-\end{acks}
-
+% References are excluded from the twelve-page main paper.
+\clearpage
+\nobalance
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{memcatalog}
 

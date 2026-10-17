@@ -1,13 +1,15 @@
 %!TEX root = ../main.tex
-\section{For Performance: Experience-Guided Memory Access}
+\section{For Performance: Query-Specific Pipelines}
 \label{sec:framework}
 
-A memory query needs evidence organized into its required computation,
-not just relevant passages. The pipelines distinguish a fact lookup from
-independent and dependent composition. Second-order experience guides
+A memory query requires evidence and a computation over that evidence.
+The pipelines distinguish single-fact retrieval from independent and
+dependent composition. Prior systems expose semantic
+operators and subtask structure~\cite{lotus,docetl,decomposed,lmcompiler}.
+Here, second-order experience guides
 grounding without changing support requirements.
 
-\subsection{Fact Lookup and Evidence Composition}
+\subsection{A Complete Partition of Query Plans}
 \label{subsec:new-plans}
 
 The three plans are \emph{single-fact retrieval} (\ret),
@@ -26,6 +28,7 @@ request templates. $g$ is a type-checked result operation, and
 $(j,i,p)\in D$ binds the output of $r_j$ to input slot $p$ of $r_i$.
 Each template carries $q$'s source snapshot and declared scopes.
 Slots accept scalar or finite-set values and have at most one binding.
+
 Normalization exposes cross-goal bindings and removes unused requests
 and identity-only wrappers. Candidate enumeration, independent evaluation, and reduction
 form one population block; a result that determines a later request
@@ -44,26 +47,22 @@ zero or one observed candidate. Thus
 \end{cases}
 \end{equation}
 
-\begin{proposition}[Complete and disjoint plan classes]
-Every well-formed normalized finite acyclic evidence plan belongs to exactly one
-class in Eq.~\eqref{eq:planner}.
-\end{proposition}
-\begin{proof}
-A plan either has a dependency edge or has none. In the latter case
-it is either atomic or non-atomic. The cases are exhaustive and
-mutually exclusive.
-\end{proof}
+The partition is complete and disjoint: a plan either has a binding
+edge or has none; an edge-free plan is either atomic or non-atomic.
+Each well-formed normalized finite acyclic plan therefore selects
+exactly one pipeline.
 
-This is a guarantee about plans, not intrinsic labels for natural-language
-questions. For the longest-outdoor-activity organizer, we use a goal-directed
+The partition classifies the chosen plan; a natural-language question
+can admit several plans. For the longest-outdoor-activity organizer, we use a goal-directed
 plan: select the event, then bind it to an organizer lookup.
 An alternative that fetches every organizer before selecting could be
 independent. Both plans represent the same question, but incur different
-work. The compiler exposes the chosen computation and validates entity/time
+work.
+
+The compiler exposes the chosen computation and validates entity/time
 scopes, bindings, and $g$. Model-assisted compilation is charged when
-needed; ambiguous scope is clarified or reported as a gap.
-The partition does not prove that compilation always interprets a
-question correctly.
+needed; ambiguous scope remains an unresolved obligation. The partition
+applies to the resulting normalized plan.
 
 \subsection{Learning to Ground and Execute}
 \label{subsec:new-experience}
@@ -73,8 +72,8 @@ question correctly.
 In Example~1, with illustrative priors $\alpha_0=\beta_0=1$, the Ava/Cara organizer
 links have estimated use propensity $2/3$ and Ben's has $1/3$ in a
 matched contact context.
-This changes the priority of equally relevant facts, not their truth;
-an indoor-activity request can still favor Ben.
+This changes the priority of equally relevant facts while preserving
+their source-based support; an indoor-activity request can still favor Ben.
 
 All pipelines use $E_i=\operatorname{Ground}(r_i,\Mm)$ against $q$'s
 fixed source snapshot.
@@ -84,10 +83,11 @@ facts, and acquires unmet evidence from raw sessions
 regions without replacing those checks.
 
 \runin{Single-fact retrieval: locate, verify, return}
-For an individual target, select its source-supported temporal value
+For an individual target, ground its evidence and select the
+source-supported value at the requested time:
 $v=\operatorname{Select}(r,E)$.
-Missing facts are not automatically false; unresolved identity,
-conflicting versions, or absent support yields a gap.
+Unresolved identity, conflicting versions, or absent support leaves a
+gap; a missing fact remains unknown.
 Verified cached evidence can be returned without another semantic judgment.
 
 \runin{Independent composition: ground, evaluate, combine}
@@ -107,10 +107,12 @@ Counts use yes/no judgments; comparisons align normalized values with
 their candidates; summaries retain source support.
 $\operatorname{Combine}$ implements the request's count, comparison,
 tuple, or source-grounded synthesis; $g$ combines request outputs.
-Independent judgments may execute in parallel. A closed empty scope has a defined result, such as count
-0 or no matching event, rather than an unknown value.
-Comparisons retain all tied winners; a later lookup instantiates one
-request per bound winner rather than silently choosing one.
+
+Independent judgments may execute in parallel. A closed empty scope has
+a defined result, such as count 0 or no matching event.
+Comparisons retain all tied winners. When a later lookup consumes a winner,
+that binding makes the containing plan dependent and instantiates one
+request per bound winner, preserving ties.
 
 An exact population result needs complete coverage and every required
 judgment. With $h$ known positives and $u$ unresolved judgments in a
@@ -133,14 +135,15 @@ v&=g(v_1,\ldots,v_d).
 $\operatorname{Solve}$ executes the normalized retrieval or independent
 block. Ready branches can run concurrently; a bound request returns
 to grounding for its newly determined target.
-A blocked node is not passed to $\operatorname{Solve}$:
-it retains the unresolved predecessor obligation.
+A blocked node retains its unresolved predecessor obligation and waits
+before being passed to $\operatorname{Solve}$.
+
 Available supports yield a partial response; no established evidence
 yields unknown. A definitive final value is computed only from
 the inputs required by $g$.
 A supported predecessor with no matching target instead propagates
 supported absence and skips the target lookup, as specified by $g$;
-it is not an unresolved binding.
+the binding is then resolved as absence.
 
 \runin{Support invariant}
 The final $m=(v,E,\sigma)$ is supported only if its plan is validated and
@@ -149,11 +152,9 @@ result checks are discharged; $E$ carries their
 supports, including the dependency ancestors of projected outputs and
 their selection and exclusion evidence.
 Otherwise the result remains partial or unknown.
-Conditional on correct primitive checks and scope interpretation,
-this rule is preserved by independent reduction and, inductively, by
-dependency-ordered binding. Neither a high use score nor a larger budget
-can certify an unresolved obligation. This is a support guarantee
-relative to the validated plan, not a guarantee of error-free LLM extraction.
+With correct primitive checks and scope interpretation, independent
+reduction and dependency-ordered binding preserve this invariant by
+induction. Use scores and budgets cannot close unresolved checks.
 
 \begin{memoryexample}{Example 2: one fact, independent evidence, dependent evidence}
 Use Alice's three March activities from Example~1.
@@ -163,12 +164,12 @@ Use Alice's three March activities from Example~1.
 Verify \texttt{hike-1}'s organizer and return Ava.
 
 \smallskip
-\textbf{Independent.} \emph{How many activities were outdoors?}
+\textbf{Independent.} \emph{How many March activities were outdoors?}
 Evaluate hike $\to$ yes, pottery $\to$ no, ride $\to$ yes:
 $1+0+1=2$. If pottery's setting were unknown, return $[2,3]$.
 
 \smallskip
-\textbf{Dependent.} \emph{Who organized the longest outdoor activity?}
+\textbf{Dependent.} \emph{Who organized my longest outdoor activity in March?}
 Acquire durations: hike, 4 hours; ride, 3 hours.
 Select \texttt{hike-1}, bind it to the organizer lookup, and return Ava.
 An unresolved winner cannot justify choosing Ava over Cara.

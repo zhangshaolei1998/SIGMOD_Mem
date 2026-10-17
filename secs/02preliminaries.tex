@@ -1,5 +1,4 @@
 %!TEX root = ../main.tex
-\begin{samepage}
 \section{Preliminaries}
 \label{sec:preliminary}
 
@@ -14,11 +13,10 @@ the agent. The agent exchanges a \emph{memory query} $q$ and
 \xrightarrow{q}\Mm\xrightarrow{m}\mathrm{Agent}
 \xrightarrow{A}\mathrm{User}.
 \end{equation}
-\end{samepage}
 A question can induce several memory queries; its conversation history
-and each query's operational experience are recorded separately.
-The agent uses $m$ to generate $A$; the memory support guarantee concerns
-$m$, not arbitrary claims generated in $A$.
+and each query's second-order experience are recorded separately.
+The agent uses $m$ to generate $A$. The memory support guarantee applies
+to $m$; claims the agent adds to $A$ require separate justification.
 The query/evidence
 terminology is consistent with memory retrieval work~\cite{mem0,memr3}.
 
@@ -27,8 +25,8 @@ scope, and a temporal scope. Execution uses the source snapshot available
 when $q$ arrives; newly closed sessions become available to later queries.
 Current and historical questions can therefore select different
 versions of the same fact. We model finite requests for facts or
-computations grounded in this history; the agent handles external
-knowledge and creative generation.
+computations over the recorded user history and evaluate them against
+the source snapshot fixed at query arrival.
 
 Retrieved memory is $m=(v,E,\sigma)$,
 where $v$ is a value, fact collection, justified partial bound, or
@@ -41,10 +39,10 @@ evidence that covers its requested population; a dependent result needs
 evidence for each required link. Supported means all required checks
 are discharged; partial means some evidence is established but an
 obligation remains; unknown means no source support for the result is established.
-A verified empty scope is supported absence, not unknown.
-An unresolved check is not evidence that its predicate is false.
-These states refer to a validated plan and source snapshot, not
-a promise of perfect natural-language interpretation.
+A verified empty scope establishes supported absence. An unresolved
+check leaves its predicate unknown.
+These states are defined by the evidence obligations of a validated
+plan against its source snapshot.
 
 Experience is retained per user: later queries can benefit from earlier
 fact use and execution outcomes without mixing different users' states.

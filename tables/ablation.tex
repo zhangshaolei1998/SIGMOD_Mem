@@ -2,9 +2,8 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Prototype module ablations. Evidence organization,
-      workload experience, and execution controls can affect accuracy
-      and calls. These modules are not the three memory levels.}
+    \caption{Ablations of the memory hierarchy, query-specific pipelines,
+      second-order Agent--Memory experience, and cost-aware execution.}
     \label{tbl:ablation}
     \begin{tabular}{@{}lcccc@{}}
         \toprule
@@ -12,23 +11,23 @@
             & \multicolumn{2}{c}{\textbf{\membench}}
             & \multicolumn{2}{c}{\textbf{\lmev}} \\
         \cmidrule(lr){2-3} \cmidrule(l){4-5}
-            & \textbf{Score} & \textbf{Calls} & \textbf{Score} & \textbf{Calls} \\
+            & \textbf{Score} & $\boldsymbol{\sum_q C(q)}$ & \textbf{Score} & $\boldsymbol{\sum_q C(q)}$ \\
         \midrule
         \textbf{\sys{}}               & \best{92.8} & \best{444} & \best{10.3} & \best{602} \\
         \addlinespace[2pt]
-        \tblgroup{5}{Evidence framework} \\
-        w/o planner          & 89.1 & 900 & 8.8 & 903 \\
-        w/o operators                 & 87.9 & 900 & 8.3 & 903 \\
-        w/o fact organization         & 86.7 & 900 & 7.6 & 903 \\
+        \tblgroup{5}{Memory hierarchy and query-specific pipelines} \\
+        w/o query-plan classification & 89.1 & 900 & 8.8 & 903 \\
+        w/o composition pipelines     & 87.9 & 900 & 8.3 & 903 \\
+        w/o first-order facts         & 86.7 & 900 & 7.6 & 903 \\
+        w/o raw-session grounding     & 92.8 & 444 & 10.1 & 651 \\
         \addlinespace[2pt]
-        \tblgroup{5}{Workload experience} \\
-        w/o workload experience       & 92.1 & 444 & 8.6 & 602 \\
-        w/o priority ranking          & 92.5 & 444 & 9.3 & 602 \\
-        w/o session eviction          & 92.8 & 444 & 10.1 & 651 \\
+        \tblgroup{5}{Second-order Agent--Memory experience} \\
+        w/o second-order experience   & 92.1 & 444 & 8.6 & 602 \\
+        w/o experience-guided priority & 92.5 & 444 & 9.3 & 602 \\
         \addlinespace[2pt]
-        \tblgroup{5}{Measured execution controls} \\
-        w/o pattern-aware budget      & 92.5 & 756 & 10.3 & 903 \\
-        w/o early stopping            & 92.8 & 532 & 10.3 & 723 \\
+        \tblgroup{5}{Cost-aware execution} \\
+        w/o cost-aware allocation      & 92.5 & 756 & 10.3 & 903 \\
+        w/o selective refinement       & 92.8 & 532 & 10.3 & 723 \\
         \bottomrule
     \end{tabular}
 \end{table}

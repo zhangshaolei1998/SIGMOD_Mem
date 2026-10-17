@@ -17,6 +17,7 @@
 \usepackage{array}
 \usepackage{makecell}
 \usepackage{graphicx}
+\usepackage{balance}
 
 \usetikzlibrary{shapes.geometric,shapes.symbols,positioning,arrows.meta,fit,backgrounds,calc}
 
@@ -35,8 +36,8 @@
 \newcommand{\etal}{{\em et al.}\xspace}
 
 % ===== Paragraph titles (ACM run-in heading convention) =====
-\newcommand{\stitle}[1]{\smallskip\noindent\textbf{#1}}
-\newcommand{\etitle}[1]{\smallskip\noindent\textit{#1}}
+\newcommand{\stitle}[1]{\par\smallskip\noindent\textbf{#1}}
+\newcommand{\etitle}[1]{\par\smallskip\noindent\textit{#1}}
 \newcommand{\runin}[1]{\stitle{#1.}}
 
 % ===== Color palette =====
@@ -56,10 +57,10 @@
 \newcommand{\gain}[1]{{\color{cadmiumgreen}\small(+#1)}}
 \newcommand{\loss}[1]{{\color{dropred}\small(-#1)}}
 
-% ===== Named operator badges =====
-\newcommand{\opPOINT}{\textcolor{softblue}{\textsc{point}}}
-\newcommand{\opAGG}{\textcolor{softorange}{\textsc{aggregate}}}
-\newcommand{\opCMP}{\textcolor{cadmiumgreen}{\textsc{compare}}}
+% ===== Query-pipeline labels =====
+\newcommand{\opPOINT}{\makecell{\textcolor{softblue}{\textsc{Single-Fact}}\\[-1pt]\textcolor{softblue}{\textsc{Retrieval}}}}
+\newcommand{\opAGG}{\makecell{\textcolor{softorange}{\textsc{Independent}}\\[-1pt]\textcolor{softorange}{\textsc{Composition}}}}
+\newcommand{\opCMP}{\makecell{\textcolor{cadmiumgreen}{\textsc{Dependent}}\\[-1pt]\textcolor{cadmiumgreen}{\textsc{Composition}}}}
 
 % ===== Benchmark name macros =====
 \newcommand{\lmev}{{LME-v2}\xspace}
@@ -71,10 +72,10 @@
 \newcommand{\membench}{{MemBench}\xspace}
 \newcommand{\dynamicmem}{{DynamicMem}\xspace}
 
-% ===== Query class shorthands =====
-\newcommand{\point}{\textsc{point}\xspace}
-\newcommand{\agg}{\textsc{aggregate}\xspace}
-\newcommand{\cmp}{\textsc{compare}\xspace}
+% ===== Query-pipeline shorthands =====
+\newcommand{\point}{\textsc{Single-Fact Retrieval}\xspace}
+\newcommand{\agg}{\textsc{Independent Composition}\xspace}
+\newcommand{\cmp}{\textsc{Dependent Composition}\xspace}
 
 % Core memory notation and the three normalized query-plan classes.
 \newcommand{\Hh}{\mathcal{H}}
@@ -117,7 +118,7 @@
 % Allow LaTeX to stretch line ends slightly to avoid marginal overfull boxes.
 \setlength{\emergencystretch}{3em}
 
-% ===== Experiment numbering and finding boxes (reference-paper convention) =====
+% ===== Experiment numbering and compact findings =====
 \usepackage{framed}
 \newcounter{mycounterexp}
 \newcommand{\expnum}{\stepcounter{mycounterexp}\arabic{mycounterexp}}
@@ -125,6 +126,4 @@
 \newcommand{\findingnum}{\stepcounter{mycounterfinding}\arabic{mycounterfinding}}
 \definecolor{shadecolor}{RGB}{242,242,242}
 \newcommand{\finding}[1]{%
-  \par\noindent\begin{minipage}{\columnwidth}%
-  \begin{shaded}\noindent\textbf{Finding \findingnum: #1}\end{shaded}%
-  \end{minipage}\par}
+  \par\smallskip\noindent\textbf{Finding \findingnum.} #1\par\smallskip}

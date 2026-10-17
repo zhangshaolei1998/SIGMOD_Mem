@@ -2,11 +2,15 @@
 \section{For Efficiency: Cost-Aware Execution}
 \label{sec:executor}
 
-Plan class determines the required computation, not its expense.
+The selected pipeline specifies the required computation; the executor
+decides how much of its remaining evidence work to fund.
 One independent-composition query can reuse every value; another must acquire a
 missing property or revisit an ambiguous source. Cost-aware execution
 allocates work from the current evidence state and second-order
 action experience, then revises that allocation as evidence changes.
+Adaptive sampling also varies inference effort across
+questions~\cite{adaptiveconsistency,escsc}; our actions address specific
+evidence obligations and can include acquisition or verification.
 
 \subsection{Query-Specific Budget Allocation}
 \label{subsec:new-budget}
@@ -20,9 +24,9 @@ $j$th occurrence. In memory-side LLM calls,
 C(q)=C_{\mathrm{plan}}(q)+\sum_{j=1}^{|\tau(q)|}c(\tau_j(q)).
 \end{equation}
 Each invocation is charged exactly once, including repeated actions.
-Semantic synthesis or validation by $g$ is an execution action, not free finalization.
-Acquisition and verification are not free write-path
-overheads. Deterministic reads, selection, and arithmetic use zero
+Semantic synthesis or validation by $g$ is charged as an execution action.
+The ledger also charges acquisition and verification, including work
+that populates reusable facts. Deterministic reads, selection, and arithmetic use zero
 LLM calls but can still incur latency. Agent-side query formulation
 and final answer generation are accounted for separately in an
 end-to-end ledger.
@@ -32,10 +36,9 @@ versions, bindings, and result checks.
 For the current snapshot of instantiated obligations $\Omega$, let
 $\ell(\Omega)$ be the unresolved fraction, with $\ell(\varnothing)=0$;
 conflicts leave a check
-unresolved. It is an observable evidence-gap diagnostic, not online
-accuracy or a calibrated error probability.
-Neither agreement nor an empty diagnostic after failed plan compilation
-certifies a result. Ambiguous compilation remains an unresolved check.
+unresolved. This diagnostic measures the remaining evidence gaps.
+Certification additionally requires a validated plan; ambiguous
+compilation remains an unresolved check.
 
 An action's observed reduction compares the same pre-action set:
 $\Delta\ell(a)=\ell_{\mathrm{before}}(\Omega)-
@@ -49,23 +52,25 @@ certifying a result or allocating the next action.
 For each executed action, $\Uu$ stores its context, obligation snapshot,
 observed reduction, and actual call cost. A context signature contains action
 kind, plan class, unresolved-check types, candidate count, dependency
-depth, and cache availability (all, some, or none). To estimate an available action's
+depth, and cache availability (all, some, or none).
+
+To estimate an available action's
 diagnostic reduction $\widehat{\Delta\ell}(a)$ and cost $\widehat c(a)$,
 the executor averages matched historical reductions and costs with one
 declared prior observation. Detailed signatures match these fields exactly.
 It backs off from the detailed signature
 to the same user's action-kind/plan-class history, then to the prior.
-Matching and backoff use these declared fields and order.
+The same fields and backoff order apply to every action estimate.
 These are predictions from executed actions, not counterfactual labels.
 
-The cold prior supplies the template's declared call count and half
-the fraction of unresolved checks it could discharge with available
-sources, or zero when none is available. This is an initial assumption,
-not a measured success rate; its weight decreases with matched experience.
+A cold-start template supplies the initial reduction and call-cost
+estimates. Its weight decreases as matched action records accumulate.
 Each action declares an enforced maximum reservation $c_{\max}(a)$:
 $0\leq c(a)\leq c_{\max}(a)$, distinct from its predicted mean cost.
 An action that reaches its reservation returns its current evidence state.
 
+First-order evidence identifies cache hits and unresolved obligations;
+second-order experience supplies the matched reductions and costs.
 From dependency-ready actions, the executor constructs a worklist
 $\mathcal A_+(q)$ in descending predicted net benefit
 $\widehat{\Delta\ell}(a)-\lambda\widehat c(a)$.
@@ -79,10 +84,10 @@ K(q)=\sum_{a\in\mathcal A_+(q)}c_{\max}(a)
 Here finite $K_{\max}(q)\geq0$ caps all memory-side calls, including planning, and
 $C_{\mathrm{spent}}$ records calls already paid.
 Planning is invoked only under a reservation that fits the cap; otherwise
-the system reports the unresolved plan rather than overspending.
+the system stops with the plan unresolved.
 $\lambda\geq0$ prices diagnostic reduction against calls.
-The worklist, $C_{\mathrm{spent}}(q)$, and $K(q)$ refer to the current
-decision, not fixed query-wide constants. After each action, unused reservations are released
+The worklist, $C_{\mathrm{spent}}(q)$, and $K(q)$ are updated at each
+decision. After each action, unused reservations are released
 and the worklist is rebuilt from the new evidence state.
 
 \subsection{Selective Refinement and Experience Feedback}
@@ -102,9 +107,12 @@ If no action is admissible, execution stops.
 Admissibility requires available inputs and a reservation that fits
 the remaining cap. A prerequisite sequence with delayed benefit can
 be evaluated as one bounded bundle, charging every invocation within it.
+The bundle is an action template with its own context and enforced
+reservation; its reduction and cost are estimated and recorded by the
+same rule as other actions.
 A bundle's first action must be ready, with later inputs supplied by
-earlier actions in the bundle. The rule is a local, experience-based decision, not a claim of globally
-optimal scheduling or guaranteed accuracy improvement.
+earlier actions in the bundle.
+
 Free deterministic work is not repeated on unchanged inputs.
 Repeated semantic judgments consume calls from the hard cap.
 With a finite plan and source snapshot, these rules prevent an
@@ -112,7 +120,8 @@ unresolved gap from inducing an unlimited retry loop.
 
 Execution reuses verified subresults and spends only on unresolved
 work. Semantic disagreement can trigger another judgment; shared
-unsupported evidence calls for source acquisition instead of voting.
+unsupported evidence triggers source acquisition because voting cannot
+establish source support.
 If an input changes, only its dependent descendants are invalidated
 and recomputed. Exhausting the cap or declining further work does not
 convert a gap into a supported result: $\sigma$ remains partial or
@@ -127,7 +136,7 @@ memory-side calls. Agent answer generation is separate.
 \textbf{New gap.} A closed March 23 session says,
 \emph{We planned an outdoor picnic, but rain changed our plans.}
 Its follow-up says, \emph{We ate inside River Cafe instead.}
-The two descriptions refer to one outing, not two activities.
+The two descriptions refer to the same outing.
 Alice's March 24 count needs its actual occurrence and setting,
 not merely the planned picnic.
 

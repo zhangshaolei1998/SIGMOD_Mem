@@ -5,22 +5,25 @@
 \input{figures/tex/introduction_example}
 
 Long-term LLM agents rely on memory to answer questions about a user's
-preferences, experiences, and changing circumstances.
+preferences, experiences, and changing circumstances~\cite{locomo,longmemeval}.
 Memory management involves two distinct decisions: \emph{what to store}
 from past interactions and \emph{how to use it} for an arriving query.
-A growing fact collection helps the agent know more about the user,
-but does not itself determine how those facts should be accessed or
-processed. Continually evolving memory therefore requires both
+A growing fact collection gives the agent more knowledge about the user.
+Learning from earlier executions requires a separate record of how
+that knowledge was used. Continually evolving memory therefore needs both
 retained knowledge and execution that learns from experience.
 
-Existing systems have advanced these aspects. MemGPT manages context
+Existing systems have improved how agents retain and retrieve
+knowledge~\cite{memorybank,generativeagents}.
+MemGPT manages context
 tiers~\cite{memgpt}, Mem0 extracts and updates facts~\cite{mem0}, Zep
 maintains temporal relationships~\cite{zep}, and A-MEM evolves linked
 notes~\cite{agenticmem}. MemR$^3$ adapts retrieval through evidence-gap
 tracking and reflective control~\cite{memr3}.
-These advances motivate distinguishing content evolution and
-within-query adaptation from experience retained to improve later
-memory operations.
+RMM, MemRL, and Live-Evo also adapt retrieval or experience reuse from
+feedback~\cite{rmm,memrl,liveevo}. We focus on the operational state
+retained across queries: fact exposure, validated reported use, support
+checks, and action costs, and how it guides evidence processing.
 
 \runin{Two Limitations: What to Store and How to Use It}
 The first limitation concerns the state retained across queries;
@@ -29,19 +32,21 @@ Figure~\ref{fig:motivating} illustrates both through Alice's March
 activities: an outdoor hike organized by Ava, an indoor pottery class
 organized by Ben, and an outdoor ride organized by Cara.
 
-\begin{itemize}[leftmargin=*,nosep]
-\item \textbf{How to store: facts without the experience of using them.}
+\textbf{(1) How to store: facts without the experience of using them.}
 Content-centered memory preserves user facts, but the fact collection
 alone does not record which facts were retrieved, which the agent
 consumed, or what providing them cost.
 For Alice's outdoor-contact question, memory returns three settings and
 three organizer links. The agent's answer names Ava and Cara, while Ben's organizer
 link is unused; pottery's indoor setting is still needed for exclusion.
-Keeping the six facts preserves what memory knows about Alice,
-but not what this interaction teaches memory about serving her.
-\item \textbf{How to use: one generic execution path for different queries.}
+The six facts describe Alice's activities. The interaction also reveals
+which evidence the agent used and the cost of providing it.
+\par\smallskip
+\noindent\textbf{(2) How to use: one generic execution path for different queries.}
 A generic retrieve-then-answer workflow leaves the memory-side computation implicit,
-even when retrieval is repeated.
+even when retrieval is repeated. Document analytics systems address
+related computation needs through semantic operators and pipeline
+rewrites~\cite{lotus,docetl}.
 Alice's organizer lookup needs one fact; an outdoor count needs
 population coverage and setting judgments; finding the organizer
 of the longest outdoor activity needs aligned durations and a
@@ -51,18 +56,15 @@ these different computations.
 A common repetition budget also ignores the evidence state: verified
 durations can be reused, whereas a missing duration needs acquisition.
 Uniform execution can therefore hurt both performance and efficiency.
-\end{itemize}
 
-These limitations are independent: retaining experience does not
-specify a suitable computation, and specializing execution does not
-preserve what earlier queries taught the system.
-To address both, using memory must leave reusable experience, and
-later execution must act on it.
-This connection raises three challenges: one about what to store,
-and two about how to use it.
+These limitations are independent. Retaining experience alone leaves the
+current computation unspecified; specializing execution alone leaves
+earlier experience unrecorded. Addressing both requires a representation of
+second-order experience, a query-specific computation, and a decision
+about how much work to perform.
 
 \runin{Three Challenges for Evolving Memory Management}
-\textbf{First, represent user knowledge and operational experience
+\textbf{First, represent user knowledge and second-order experience
 separately.}
 Raw User--Agent sessions must remain recoverable when a future query needs an
 unextracted detail, such as the hike's duration.
@@ -71,30 +73,34 @@ retain query context, reported fact use, and cost.
 The architecture must connect these states without confusing
 frequently used evidence with factual truth.
 
-\textbf{Second, expose the required computation for performance.}
-Given that state, execution must distinguish an individual fact lookup,
-independent evidence composition, and answer-dependent bindings.
+The second challenge concerns how this state supports execution:
+\textbf{expose the required computation for performance.}
+Execution must distinguish single-fact retrieval, independent composition,
+and dependent composition.
 Experience can guide evidence access, but cannot replace coverage
 or a missing link. It must operate within a pipeline that makes
 these requirements explicit.
 
-\textbf{Third, allocate worthwhile work for efficiency.}
-A suitable pipeline determines what must be resolved, not how much
-additional work is needed.
+The third challenge concerns execution effort:
+\textbf{allocate worthwhile work for efficiency.}
+The pipeline identifies what must be resolved. Its remaining evidence
+gaps determine how much additional work is needed.
 Queries in the same plan class can have different gaps and reuse
 opportunities. The system must allocate effort from the current
 evidence and historical costs, retaining an explicit partial result
 when an obligation remains unresolved.
+Cost-aware extraction~\cite{evaporate,quest} and adaptive query
+processing~\cite{eddies,bao} likewise make work allocation an explicit decision.
 
 \runin{Our Proposal}
 We introduce \sys{}, a continually evolving memory management system
 that connects these storage and execution decisions through persistent
-fact-use and execution experience.
+second-order Agent--Memory experience.
 
 For storage, a progressive hierarchy retains \emph{raw User--Agent
 sessions}, \emph{first-order facts}, and \emph{second-order
 Agent--Memory experience} (Section~\ref{sec:overview}).
-Following the query-driven acquisition principle in EUR~\cite{eur},
+Acquisition follows the information needed by the query:
 the agent's memory query for Alice's contact question acquires settings
 and organizers; her later comparison acquires durations from the same
 sessions. Closed conversations extend raw history; query execution and
@@ -103,8 +109,8 @@ First-order memory helps the agent understand the user;
 second-order memory helps memory understand how to serve the user.
 
 This experience informs execution in two ways.
-For performance, \emph{experience-guided memory access}
-(Section~\ref{sec:framework}) organizes normalized plans into
+For performance, \emph{query-specific pipelines with experience-guided grounding}
+(Section~\ref{sec:framework}) organize normalized plans into
 single-fact retrieval, independent composition, and dependent composition.
 The pipelines preserve source support, coverage, and bindings while
 remembered use guides grounding.
@@ -117,23 +123,20 @@ and remembered action outcomes to reserve a query-specific budget.
 Known settings and organizers are reused; missing durations receive
 acquisition work. A later comparison can then reuse the verified
 durations without new semantic judgments.
-Execution contributes its observed outcomes, cost, and validated use credit to second-order
-memory, changing how subsequent queries are served.
-This feedback connects what memory retains with how it operates.
+Execution records its outcomes, cost, and validated use credit in
+second-order memory for subsequent queries.
 
 \runin{Contributions}
-The central contribution is a coupled model of conversational and
-operational memory, linked by query-induced user facts. The hierarchy
-defines what is retained; normalized plans define how evidence is
-processed; contextual use and cost experience guide grounding and
-determine how much additional work is warranted.
-Our prototype evaluation covers eight long-term memory benchmarks
+We contribute a hierarchy of conversational evidence, query-induced
+facts, and second-order Agent--Memory experience, together with query-specific pipelines
+and experience-guided grounding and cost-aware execution.
+Our evaluation covers eight long-term memory benchmarks
 and eight LLM backbones. Its reported scores match or improve the
 strongest evaluated prior memory system on every benchmark, by an
 average of $2.6$ points and up to $5.6$ points on \lmes{}.
-Its measured read-path configuration uses $50.7\%$ fewer LLM calls
-than a Uniform-$K{=}3$ reference on \membench{}.
-Section~\ref{subsec:setup} distinguishes these measurements from the
-generalized routing, attribution, and action-value policies.
+Its cost-aware execution reduces memory-side LLM calls by $50.7\%$ on
+\membench{} while attaining higher accuracy.
+Section~\ref{sec:experiments} evaluates the evolving memory hierarchy,
+query-specific pipelines, and cost-aware execution.
 
 \input{figures/tex/introduction_scoreboard}

@@ -2,25 +2,18 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Prototype pattern-routing and control sensitivity on
-      \membench{}. The original agreement threshold $\theta$ and
-      priority weight $\alpha$ use defaults $\theta{=}0.6$ and
-      $\alpha{=}0.5$. Neither these controls nor the pattern labels
-      evaluate the normalized plan partition or action-value policy.}
+    \caption{Query-plan classification on \membench{}.}
     \label{tbl:routing}
     \setlength{\tabcolsep}{4pt}
+    \resizebox{\columnwidth}{!}{%
     \begin{tabular}{@{}lccc@{}}
         \toprule
-        \textbf{Planner} & \textbf{Pattern acc.} & \textbf{Planner calls} & \textbf{End-to-end acc.} \\
+        \textbf{Plan compiler} & \textbf{Plan-class acc.} & $\boldsymbol{C_{\mathrm{plan}}(q)}$ & \textbf{Answer acc.} \\
         \midrule
         Rule-based (ours) & 91.4 & 0 & 92.8 \\
-        LLM planner          & 95.1 & 1 & 93.2 \\
-        Always \point        & 61.3 & 0 & 87.5 \\
-        \midrule
-        \tblgroup{4}{Parameter perturbation} \\
-        $\theta \in [0.4, 0.8]$  & \multicolumn{3}{c}{end-to-end acc.\ 92.3--92.9} \\
-        $\alpha \in [0.3, 0.7]$  & \multicolumn{3}{c}{end-to-end acc.\ 92.2--92.8} \\
+        LLM plan compiler  & 95.1 & 1 & 93.2 \\
+        Always \point      & 61.3 & 0 & 87.5 \\
         \bottomrule
-    \end{tabular}
-    \Description{Planner comparison and parameter sensitivity on MemBench.}
+    \end{tabular}}
+    \Description{Query-plan classification on MemBench.}
 \end{table}

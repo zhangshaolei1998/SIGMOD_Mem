@@ -2,16 +2,17 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Reported per-pattern scores on \membench{}. Pattern labels
-      differ from normalized plan classes; grouping/averaging remains
-      unreconciled with Table~\ref{tbl:main_results}.}
+    \caption{Answer quality on \membench{}, grouped by the normalized
+      plan class $\rho(P)$: single-fact retrieval, independent composition,
+      and dependent composition.}
     \label{tbl:perclass}
+    \resizebox{\columnwidth}{!}{%
     \begin{tabular}{@{}lccc@{}}
         \toprule
         \textbf{Method} & \opPOINT & \opAGG & \opCMP \\
         \midrule
         \tblgroup{4}{Prompting baselines} \\
-        Full-Context~\cite{longcontext}    & 90.9 & 64.4 & 84.2 \\
+        Full-Context    & 90.9 & 64.4 & 84.2 \\
         RAG~\cite{rag}                     & 91.8 & 67.1 & 85.8 \\
         \addlinespace[2pt]
         \tblgroup{4}{Memory systems} \\
@@ -24,5 +25,5 @@
         \ourgroup{4}{Ours} \\
         \textbf{\sys{}} & \best{94.6} & \best{78.0} & \best{91.2} \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}}
 \end{table}

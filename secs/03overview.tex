@@ -4,11 +4,9 @@
 
 \input{figures/tex/framework_overview}
 
-\sys{} retains User--Agent conversation history in raw sessions and
-Agent--Memory experience in second-order memory. First-order facts
-connect them: queries extract facts from raw sessions, and fact use
-produces operational experience. User knowledge remains distinct from
-experience about serving the user.
+\sys{} separates User--Agent history from Agent--Memory experience.
+Query-induced first-order facts connect them: conversations supply
+evidence, and execution records how that evidence is provided and used.
 
 \subsection{From Sessions to Facts to Use Experience}
 \label{subsec:new-state}
@@ -19,9 +17,9 @@ For each user, the memory state is
 \Mm=(\Hh,\Ff,\Uu).
 \end{equation}
 The progression $\Hh\rightarrow\Ff\rightarrow\Uu$ links conversations,
-derived facts, and experience of using those facts; it is not an
-execution order. $\Uu$ also retains execution outcomes and cost when no
-fact is returned. All three levels are isolated by user.
+facts, and fact-use experience, independently of execution order.
+$\Uu$ retains outcomes and costs even for empty results. All levels
+are isolated by user.
 
 \runin{Raw sessions: User--Agent history}
 $\Hh=(s_1,\ldots,s_n)$ is an append-only sequence of closed,
@@ -48,17 +46,15 @@ action costs, and validated credit for agent-reported fact use.
 It distinguishes exposure from reported consumption and stores both
 execution records and statistics derived from them. Repeated organizer
 requests teach the system which event links to prioritize and reuse.
-The corresponding costs teach it where another execution is useful.
+Observed action outcomes and costs inform subsequent execution decisions.
 
-\begin{memoryexample}{Example 1: from a conversation to operational experience}
+\begin{memoryexample}{Example 1: from a conversation to second-order experience}
 \textbf{1. Raw conversations.} Alice says on March 2,
 \emph{Ava arranged our 4-hour outdoor hike at Pine Trail.}
 On March 9, \emph{Ben booked my 2-hour indoor pottery class.}
 On March 16, \emph{Cara arranged our 3-hour outdoor ride at Lake Park.}
 
 \smallskip
-\pagebreak[4]
-\begin{minipage}{\linewidth}
 \textbf{2. The question determines extraction.} On March 17, Alice asks,
 \emph{Whom should I contact to repeat my March outdoor activities?}
 The agent requests March activities, settings, and organizers:
@@ -71,18 +67,17 @@ Activity ID & Setting & Organizer\\
 \texttt{ride-1} & outdoors & Cara\\
 \end{tabular}
 \end{center}
-\end{minipage}\par
-These six entries, together with a verified three-activity scope, support
-the response. The facts include
-\texttt{(hike-1, organizer, Ava)}. Unneeded durations remain in raw sessions.
+The six entries and verified three-activity scope support the response.
+For example, \texttt{(hike-1, organizer, Ava)} is one fact;
+unneeded durations remain in raw sessions.
 
 \smallskip
 \textbf{3. Retrieval differs from use.} The agent answers,
 \emph{Ava for the hike; Cara for the ride.}
 A complete use report credits all three settings, including pottery's
 exclusion, and the Ava/Cara links. Ben's organizer was returned but unused.
-Second-order memory records these IDs, context, and cost.
-Unused facts remain available.
+Second-order memory records these IDs, context, and cost without
+discarding unused facts.
 
 \smallskip
 \textbf{4. All three levels evolve.} The March 18 question about the
@@ -102,8 +97,8 @@ which source regions must be examined. Newly acquired facts enrich
 $\Ff$ after verification. Acquisition reconciles identities, normalizes
 dates and units, and retains temporal versions. Relative dates use the source
 session's timestamp. Multiple valid objects can coexist; an explicit
-update to a single-valued property creates a new version rather than
-erasing its history.
+update to a single-valued property creates a new version and preserves
+its history.
 
 After execution, $\Uu$ records $q$'s context, returned fact-version IDs
 $E^r$, support diagnostics, and costs. $E^r$ includes the facts exposed
@@ -117,17 +112,21 @@ Membership, lineage, and source/version checks against $q$'s snapshot validate t
 $E^u\subseteq E^r$;
 each fact receives at most one use credit per query, with idempotent
 updates by query and fact-version ID. Returning a result
-alone does not imply use, and credit does not establish a causal
-contribution to answer correctness. Incomplete or missing reports leave
+establishes exposure; use requires a validated report. Credit records
+reported consumption without attributing answer correctness to a fact.
+Incomplete or missing reports leave
 use unobserved; execution records are retained independently.
+
 A closed User--Agent session is appended to $\Hh$. Later queries
 revalidate cached scope and version checks affected by the new session;
 old assertions and their provenance are not erased.
 
-Figure~\ref{fig:framework_overview} shows how this experience affects the
-next query. For performance, it guides evidence selection and reuse
-within a dependency-specific pipeline
-(Section~\ref{sec:framework}). For efficiency, it guides the amount
+Figure~\ref{fig:framework_overview} connects the hierarchy to execution.
+First-order facts supply source-backed values and identify missing evidence;
+second-order experience supplies use priorities and action-cost estimates.
+Both inputs support query planning and execution control. For performance, they guide
+grounding and reuse within the selected pipeline
+(Section~\ref{sec:framework}). For efficiency, they guide the amount
 and location of additional execution
 (Section~\ref{sec:executor}). The operations evolve through their
 priorities, reuse decisions, and budgets; source evidence continues to

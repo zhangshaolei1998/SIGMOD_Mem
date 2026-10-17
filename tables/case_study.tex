@@ -2,23 +2,17 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Reported aggregation trace: implicit counting and unresolved
-      predicates contrast with explicit candidate decisions and tallying.
-      The stopping behavior is from the measured prototype.}
+    \caption{Independent-composition trace: implicit counting and unresolved predicates
+      contrast with explicit candidate evaluation and combination.}
     \label{tbl:casestudy}
     \begin{tabular}{@{}llcc@{}}
         \toprule
-        \textbf{System} & \textbf{Retrieval and reasoning} & \textbf{Calls} & \textbf{Answer} \\
+        \textbf{System} & \textbf{Evidence processing} & $\boldsymbol{C(q)}$ & \textbf{Answer} \\
         \midrule
         Full-Context   & count left implicit & 1 & \textcolor{dropred}{5} \\
         Zep~\cite{zep} & predicate unresolved & 1 & \textcolor{dropred}{4} \\
         \midrule
-        \ourgroup{4}{\sys{}, measured execution steps} \\
-        \multicolumn{4}{@{}l}{\quad \emph{Planner} routes on the quantifier marker} \\
-        \multicolumn{4}{@{}l}{\quad \emph{Workload experience} prioritizes resolved entities} \\
-        \multicolumn{4}{@{}l}{\quad \emph{Operator} decides each candidate, then tallies} \\
-        \multicolumn{4}{@{}l}{\quad \emph{Executor} withholds the third call on agreement} \\
-        \textbf{\sys{}} & explicit per-item decision & 2 & \textcolor{cadmiumgreen}{\textbf{3}} \\
+        \textbf{\sys{}} & explicit candidate evaluation & 2 & \textcolor{cadmiumgreen}{\textbf{3}} \\
         \bottomrule
     \end{tabular}
 \end{table}

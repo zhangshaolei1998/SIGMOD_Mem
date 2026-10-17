@@ -1,114 +1,220 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% MemCatalog references
-% All arXiv IDs and venues verified against export.arxiv.org and DBLP.
+% Verified references used by the active manuscript.
+% Primary records and claim-level audit: build/reference-audit-20261018/.
+% Uncited legacy entries are preserved in that run's before.tgz snapshot.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% ===== Agent memory systems =====
-@article{memr3,
-  title={{MemR3}: Memory Retrieval via Reflective Reasoning for {LLM} Agents},
-  author={Du, Xingbo and Li, Loka and Zhang, Duzhen and Song, Le},
-  journal={arXiv preprint arXiv:2512.20237},
-  year={2025}
+@article{lotus,
+  title={Semantic Operators and Their Optimization: Enabling {LLM}-Based Data Processing with Accuracy Guarantees in {LOTUS}},
+  author={Patel, Liana and Jha, Siddharth and Pan, Melissa and Gupta, Harshit and Asawa, Parth and Guestrin, Carlos and Zaharia, Matei},
+  journal={Proceedings of the VLDB Endowment},
+  volume={18},
+  number={11},
+  pages={4171--4184},
+  year={2025},
+  doi={10.14778/3749646.3749685},
+  url={https://www.vldb.org/pvldb/vol18/p4171-patel.pdf}
 }
 
-@misc{eur,
-  title={Back to the Future: The Evolving Universal Relation Model},
-  author={Tang, Nan and Wang, Haixun},
-  note={Undated manuscript supplied as a reference}
+@article{docetl,
+  title={{DocETL}: Agentic Query Rewriting and Evaluation for Complex Document Processing},
+  author={Shankar, Shreya and Chambers, Tristan and Shah, Tarak and Parameswaran, Aditya G. and Wu, Eugene},
+  journal={Proceedings of the VLDB Endowment},
+  volume={18},
+  number={9},
+  pages={3035--3048},
+  year={2025},
+  doi={10.14778/3746405.3746426},
+  url={https://www.vldb.org/pvldb/vol18/p3035-shankar.pdf}
+}
+
+@article{quest,
+  title={{QUEST}: Query Optimization in Unstructured Document Analysis},
+  author={Sun, Zhaoze and Chai, Chengliang and Deng, Qiyan and Jin, Kaisen and Guo, Xinyu and Han, Han and Yuan, Ye and Wang, Guoren and Cao, Lei},
+  journal={Proceedings of the VLDB Endowment},
+  volume={18},
+  number={11},
+  pages={4560--4573},
+  year={2025},
+  doi={10.14778/3749646.3749713},
+  url={https://www.vldb.org/pvldb/vol18/p4560-chai.pdf}
+}
+
+@article{evaporate,
+  title={Language Models Enable Simple Systems for Generating Structured Views of Heterogeneous Data Lakes},
+  author={Arora, Simran and Yang, Brandon and Eyuboglu, Sabri and Narayan, Avanika and Hojel, Andrew and Trummer, Immanuel and R{\'e}, Christopher},
+  journal={Proceedings of the VLDB Endowment},
+  volume={17},
+  number={2},
+  pages={92--105},
+  year={2023},
+  doi={10.14778/3626292.3626294},
+  url={https://www.vldb.org/pvldb/vol17/p92-arora.pdf}
+}
+
+@inproceedings{bao,
+  title={{Bao}: Making Learned Query Optimization Practical},
+  author={Marcus, Ryan and Negi, Parimarjan and Mao, Hongzi and Tatbul, Nesime and Alizadeh, Mohammad and Kraska, Tim},
+  booktitle={Proceedings of the 2021 International Conference on Management of Data},
+  pages={1275--1288},
+  year={2021},
+  publisher={Association for Computing Machinery},
+  doi={10.1145/3448016.3452838},
+  url={https://doi.org/10.1145/3448016.3452838}
+}
+
+@inproceedings{eddies,
+  title={Eddies: Continuously Adaptive Query Processing},
+  author={Avnur, Ron and Hellerstein, Joseph M.},
+  booktitle={Proceedings of the 2000 ACM SIGMOD International Conference on Management of Data},
+  pages={261--272},
+  year={2000},
+  publisher={Association for Computing Machinery},
+  doi={10.1145/342009.335420},
+  url={https://doi.org/10.1145/342009.335420}
+}
+
+@inproceedings{rmm,
+  title={In Prospect and Retrospect: Reflective Memory Management for Long-term Personalized Dialogue Agents},
+  author={Tan, Zhen and Yan, Jun and Hsu, I-Hung and Han, Rujun and Wang, Zifeng and Le, Long and Song, Yiwen and Chen, Yanfei and Palangi, Hamid and Lee, George and Iyer, Anand Rajan and Chen, Tianlong and Liu, Huan and Lee, Chen-Yu and Pfister, Tomas},
+  booktitle={Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  year={2025},
+  publisher={Association for Computational Linguistics},
+  pages={8416--8439},
+  doi={10.18653/v1/2025.acl-long.413},
+  url={https://aclanthology.org/2025.acl-long.413/}
+}
+
+@article{memr3,
+  title={{MemR}$^3$: Memory Retrieval via Reflective Reasoning for {LLM} Agents},
+  author={Du, Xingbo and Li, Loka and Zhang, Duzhen and Song, Le},
+  journal={arXiv preprint arXiv:2512.20237},
+  year={2025},
+  doi={10.48550/arXiv.2512.20237},
+  url={https://arxiv.org/abs/2512.20237}
 }
 
 @article{memgpt,
   title={{MemGPT}: Towards {LLMs} as Operating Systems},
   author={Packer, Charles and Wooders, Sarah and Lin, Kevin and Fang, Vivian and Patil, Shishir G. and Stoica, Ion and Gonzalez, Joseph E.},
   journal={arXiv preprint arXiv:2310.08560},
-  year={2023}
+  year={2023},
+  doi={10.48550/arXiv.2310.08560},
+  url={https://arxiv.org/abs/2310.08560}
 }
 
 @article{mem0,
   title={{Mem0}: Building Production-Ready {AI} Agents with Scalable Long-Term Memory},
   author={Chhikara, Prateek and Khant, Dev and Aryan, Saket and Singh, Taranjeet and Yadav, Deshraj},
   journal={arXiv preprint arXiv:2504.19413},
-  year={2025}
+  year={2025},
+  doi={10.48550/arXiv.2504.19413},
+  url={https://arxiv.org/abs/2504.19413}
 }
 
 @article{zep,
   title={{Zep}: A Temporal Knowledge Graph Architecture for Agent Memory},
   author={Rasmussen, Preston and Paliychuk, Pavlo and Beauvais, Travis and Ryan, Jack and Chalef, Daniel},
   journal={arXiv preprint arXiv:2501.13956},
-  year={2025}
-}
-
-@misc{letta,
-  title={{Letta}: A Framework for Stateful {LLM} Agents with Memory Management},
-  author={Packer, Charles and Wooders, Sarah and others},
-  note={Successor of {MemGPT}; \url{https://github.com/letta-ai/letta}},
-  year={2024}
-}
-
-@article{arigraph,
-  title={{AriGraph}: Learning Knowledge Graph World Models with Episodic Memory for {LLM} Agents},
-  author={Anokhin, Petr and Semenov, Nikita and Sorokin, Artyom and Evseev, Dmitry and Burtsev, Mikhail and Burnaev, Evgeny},
-  journal={arXiv preprint arXiv:2407.04363},
-  year={2024}
+  year={2025},
+  doi={10.48550/arXiv.2501.13956},
+  url={https://arxiv.org/abs/2501.13956}
 }
 
 @article{agenticmem,
   title={A-{MEM}: Agentic Memory for {LLM} Agents},
   author={Xu, Wujiang and Liang, Zujie and Mei, Kai and Gao, Hang and Tan, Juntao and Zhang, Yongfeng},
   journal={arXiv preprint arXiv:2502.12110},
-  year={2025}
+  year={2025},
+  doi={10.48550/arXiv.2502.12110},
+  url={https://arxiv.org/abs/2502.12110}
 }
 
-@article{voyager,
-  title={{Voyager}: An Open-Ended Embodied Agent with Large Language Models},
-  author={Wang, Guanzhi and Xie, Yuqi and Jiang, Yunfan and Mandlekar, Ajay and Xiao, Chaowei and Zhu, Yuke and Fan, Linxi and Anandkumar, Anima},
-  journal={arXiv preprint arXiv:2305.16291},
-  year={2023}
+@inproceedings{memorybank,
+  title={{MemoryBank}: Enhancing Large Language Models with Long-Term Memory},
+  author={Zhong, Wanjun and Guo, Lianghong and Gao, Qiqi and Ye, He and Wang, Yanlin},
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume={38},
+  number={17},
+  pages={19724--19731},
+  year={2024},
+  doi={10.1609/aaai.v38i17.29946},
+  url={https://ojs.aaai.org/index.php/AAAI/article/view/29946}
+}
+
+@inproceedings{generativeagents,
+  title={Generative Agents: Interactive Simulacra of Human Behavior},
+  author={Park, Joon Sung and O'Brien, Joseph C. and Cai, Carrie J. and Morris, Meredith Ringel and Liang, Percy and Bernstein, Michael S.},
+  booktitle={Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology},
+  year={2023},
+  publisher={Association for Computing Machinery},
+  pages={1--22},
+  doi={10.1145/3586183.3606763},
+  url={https://doi.org/10.1145/3586183.3606763}
 }
 
 @article{hipporag,
   title={{HippoRAG}: Neurobiologically Inspired Long-Term Memory for Large Language Models},
   author={Guti{\'e}rrez, Bernal Jim{\'e}nez and Shu, Yiheng and Gu, Yu and Yasunaga, Michihiro and Su, Yu},
   journal={arXiv preprint arXiv:2405.14831},
-  year={2024}
+  year={2024},
+  doi={10.48550/arXiv.2405.14831},
+  url={https://arxiv.org/abs/2405.14831}
 }
 
 @article{memorag,
   title={{MemoRAG}: Boosting Long Context Processing with Global Memory-Enhanced Retrieval Augmentation},
-  author={Qian, Hongjin and Liu, Zheng and Mao, Kelong and Zhou, Yujia and Dou, Zhicheng},
+  author={Qian, Hongjin and Liu, Zheng and Zhang, Peitian and Mao, Kelong and Lian, Defu and Dou, Zhicheng and Huang, Tiejun},
   journal={arXiv preprint arXiv:2409.05591},
-  year={2024}
+  year={2024},
+  doi={10.48550/arXiv.2409.05591},
+  url={https://arxiv.org/abs/2409.05591}
 }
 
-@article{agentmemsurvey,
-  title={From Storage to Experience: A Survey on the Evolution of {LLM} Agent Memory Mechanisms},
-  author={Luo, Junyu and others},
-  journal={arXiv preprint arXiv:2605.06716},
-  year={2026}
+@article{memrl,
+  title={{MemRL}: Self-Evolving Agents via Runtime Reinforcement Learning on Episodic Memory},
+  author={Zhang, Shengtao and Wang, Jiaqian and Zhou, Ruiwen and Liao, Junwei and Feng, Yuchen and Li, Zhuo and Zheng, Yujie and Zhang, Weinan and Wen, Ying and Li, Zhiyu and Xiong, Feiyu and Qi, Yutao and Tang, Bo and Wen, Muning},
+  journal={arXiv preprint arXiv:2601.03192},
+  year={2026},
+  doi={10.48550/arXiv.2601.03192},
+  url={https://arxiv.org/abs/2601.03192}
 }
 
-% ===== Long-term memory benchmarks =====
-@article{longmemeval,
+@article{liveevo,
+  title={{Live-Evo}: Online Evolution of Agentic Memory from Continuous Feedback},
+  author={Zhang, Yaolun and Wu, Yiran and Yu, Yijiong and Wu, Qingyun and Wang, Huazheng},
+  journal={arXiv preprint arXiv:2602.02369},
+  year={2026},
+  doi={10.48550/arXiv.2602.02369},
+  url={https://arxiv.org/abs/2602.02369}
+}
+
+@inproceedings{longmemeval,
   title={{LongMemEval}: Benchmarking Chat Assistants on Long-Term Interactive Memory},
   author={Wu, Di and Wang, Hongwei and Yu, Wenhao and Zhang, Yuwei and Chang, Kai-Wei and Yu, Dong},
-  journal={arXiv preprint arXiv:2410.10813},
-  year={2024}
+  booktitle={The Thirteenth International Conference on Learning Representations},
+  year={2025},
+  url={https://arxiv.org/abs/2410.10813}
+}
+
+@article{longmemevalv2,
+  title={{LongMemEval-V2}: Evaluating Long-Term Agent Memory Toward Experienced Colleagues},
+  author={Wu, Di and Ji, Zixiang and Kawatkar, Asmi and Kwan, Bryan and Gu, Jia-Chen and Peng, Nanyun and Chang, Kai-Wei},
+  journal={arXiv preprint arXiv:2605.12493},
+  year={2026},
+  doi={10.48550/arXiv.2605.12493},
+  url={https://arxiv.org/abs/2605.12493}
 }
 
 @inproceedings{locomo,
   title={Evaluating Very Long-Term Conversational Memory of {LLM} Agents},
   author={Maharana, Adyasha and Lee, Dong-Ho and Tulyakov, Sergey and Bansal, Mohit and Barbieri, Francesco and Fang, Yuwei},
-  booktitle={Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)},
+  booktitle={Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
   year={2024},
-  note={arXiv:2402.17753}
-}
-
-@inproceedings{memorybank,
-  title={{MemoryBank}: Enhancing Large Language Models with Long-Term Memory},
-  author={Zhong, Wanjun and Guo, Lianghong and Gao, Qiqi and Ye, He and Wang, Yanlin},
-  booktitle={AAAI},
-  year={2024},
-  note={arXiv:2305.10250}
+  publisher={Association for Computational Linguistics},
+  pages={13851--13870},
+  doi={10.18653/v1/2024.acl-long.747},
+  url={https://aclanthology.org/2024.acl-long.747/}
 }
 
 @inproceedings{membench,
@@ -116,249 +222,101 @@
   author={Tan, Haoran and Zhang, Zeyu and Ma, Chen and Chen, Xu and Dai, Quanyu and Dong, Zhenhua},
   booktitle={Findings of the Association for Computational Linguistics: ACL 2025},
   year={2025},
+  publisher={Association for Computational Linguistics},
+  pages={19336--19352},
   doi={10.18653/v1/2025.findings-acl.989},
-  note={arXiv:2506.21605}
+  url={https://aclanthology.org/2025.findings-acl.989/}
 }
 
 @article{dynamicmem,
   title={{DynamicMem}: A Long-Horizon Memory Benchmark in Real-World Settings},
-  author={Xie, Wenya and Zhou, Shengming and Li, Zelin and Parsa, Pouya and Zhou, Shuang and Ding, Xinheng and Arvind, Chinmay and Wang, Guanchu},
+  author={Xie, Wenya and Zhou, Shengming and Li, Zelin and Parsa, Pouya and Zhou, Shuang and Ding, Xinheng and Arvind, Chinmay and Wang, Guanchu and Braverman, Vladimir and Payani, Ali and Zheng, Yantao and Liu, Zirui},
   journal={arXiv preprint arXiv:2606.22877},
-  year={2026}
+  year={2026},
+  doi={10.48550/arXiv.2606.22877},
+  url={https://arxiv.org/abs/2606.22877}
 }
 
 @article{evomemory,
   title={{Evo-Memory}: Benchmarking {LLM} Agent Test-time Learning with Self-Evolving Memory},
   author={Wei, Tianxin and Sachdeva, Noveen and Coleman, Benjamin and He, Zhankui and Bei, Yuanchen and Ning, Xuying and Ai, Mengting and Li, Yunzhe and He, Jingrui and Chi, Ed H. and Wang, Chi and Chen, Shuo and Pereira, Fernando and Kang, Wang-Cheng and Cheng, Derek Zhiyuan},
   journal={arXiv preprint arXiv:2511.20857},
-  year={2025}
-}
-
-@article{perltqa,
-  title={{PerLTQA}: A Personal Long-Term Memory Dataset for Memory Classification, Retrieval, and Synthesis in Question Answering},
-  author={Du, Yiming and Wang, Hongru and Zhao, Zhengyi and Liang, Bin and Wang, Baojun and Zhong, Wanjun and Wang, Zezhong and Wong, Kam-Fai},
-  journal={arXiv preprint arXiv:2402.16288},
-  year={2024}
-}
-
-@article{dialsim,
-  title={{DialSim}: A Real-Time Simulator for Evaluating Long-Term Multi-Party Dialogue Understanding of Conversational Agents},
-  author={Kim, Jiho and Chae, Woosog and Kim, Yeonsu and Cho, Seokchan and Kim, Yoonseo and Kim, Kyungjae and Choi, Yohan and Choo, Jaegul},
-  journal={arXiv preprint arXiv:2406.13144},
-  year={2024}
-}
-
-@article{longbench,
-  title={{LongBench}: A Bilingual, Multitask Benchmark for Long Context Understanding},
-  author={Bai, Yushi and Lv, Xin and Zhang, Jiajie and Lyu, Hongchang and Tang, Jiankai and Huang, Zhidian and Du, Zhengxiao and Liu, Xiao and Zeng, Aohan and Hou, Lei and Dong, Yuxiao and Tang, Jie and Li, Juanzi},
-  journal={arXiv preprint arXiv:2308.14508},
-  year={2023}
-}
-
-% ===== DBMS-inspired LLM analytics =====
-@article{lotus,
-  title={Semantic Operators: A Declarative Model for Rich, {AI}-based Data Processing},
-  author={Patel, Liana and Jha, Siddharth and Pan, Melissa and Guestrin, Carlos and Zaharia, Matei},
-  journal={arXiv preprint arXiv:2407.11418},
-  year={2024}
-}
-
-@inproceedings{docetl,
-  title={{DocETL}: Agentic Query Rewriting and Evaluation for Complex Document Processing},
-  author={Shankar, Shreya and Chambers, Tristan and Parameswaran, Aditya G.},
-  booktitle={ICLR},
   year={2025},
-  note={arXiv:2410.12189}
+  doi={10.48550/arXiv.2511.20857},
+  url={https://arxiv.org/abs/2511.20857}
 }
 
-@article{uqe,
-  title={{UQE}: A Query Engine for Unstructured Databases},
-  author={Dai, Hanjun and Wang, Bethany Yixin and Wan, Xingchen and Dai, Bo and Schuurmans, Dale},
-  journal={arXiv preprint arXiv:2407.09522},
-  year={2024}
-}
-
-@article{suql,
-  title={{SUQL}: Conversational Search over Structured and Unstructured Data with Large Language Models},
-  author={Liu, Shicheng and Xu, Jialiang and Tjangnaka, Wesley and Semnani, Sina J. and Yu, Chen Jie and Lam, Monica S.},
-  journal={arXiv preprint arXiv:2311.09818},
-  year={2023}
-}
-
-% ===== Learned query optimization =====
-@article{neoopt,
-  title={{Neo}: A Learned Query Optimizer},
-  author={Marcus, Ryan and Negi, Parimarjan and Mao, Hongzi and Zhang, Chi and Alizadeh, Mohammad and Kraska, Tim and Papaemmanouil, Olga and Tatbul, Nesime},
-  journal={arXiv preprint arXiv:1904.03711},
-  year={2019}
-}
-
-@article{baoopt,
-  title={{Bao}: Learning to Steer Query Optimizers},
-  author={Marcus, Ryan and Negi, Parimarjan and Mao, Hongzi and Tatbul, Nesime and Alizadeh, Mohammad and Kraska, Tim},
-  journal={arXiv preprint arXiv:2004.03814},
-  year={2020}
-}
-
-@article{balsa,
-  title={{Balsa}: Learning a Query Optimizer Without Expert Demonstrations},
-  author={Yang, Zongheng and Chiang, Wei-Lin and Luan, Sifei and Mittal, Gautam and Luo, Michael and Stoica, Ion},
-  journal={arXiv preprint arXiv:2201.01441},
-  year={2022}
-}
-
-% ===== Retrieval / RAG =====
 @inproceedings{rag,
   title={Retrieval-Augmented Generation for Knowledge-Intensive {NLP} Tasks},
   author={Lewis, Patrick and Perez, Ethan and Piktus, Aleksandra and Petroni, Fabio and Karpukhin, Vladimir and Goyal, Naman and K{\"u}ttler, Heinrich and Lewis, Mike and Yih, Wen-tau and Rockt{\"a}schel, Tim and Riedel, Sebastian and Kiela, Douwe},
-  booktitle={NeurIPS},
-  year={2020}
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={33},
+  year={2020},
+  url={https://proceedings.neurips.cc/paper/2020/hash/6b493230205f780e1bc26945df7481e5-Abstract.html}
 }
 
-@article{graphrag,
-  title={From Local to Global: A Graph {RAG} Approach to Query-Focused Summarization},
-  author={Edge, Darren and Trinh, Ha and Cheng, Newman and Bradley, Joshua and Chao, Alex and Mody, Apurva and Truitt, Steven and Larson, Jonathan},
-  journal={arXiv preprint arXiv:2404.16130},
-  year={2024}
+@inproceedings{decomposed,
+  title={Decomposed Prompting: A Modular Approach for Solving Complex Tasks},
+  author={Khot, Tushar and Trivedi, Harsh and Finlayson, Matthew and Fu, Yao and Richardson, Kyle and Clark, Peter and Sabharwal, Ashish},
+  booktitle={The Eleventh International Conference on Learning Representations},
+  year={2023},
+  url={https://arxiv.org/abs/2210.02406}
 }
 
-@inproceedings{raptor,
-  title={{RAPTOR}: Recursive Abstractive Processing for Tree-Organized Retrieval},
-  author={Sarthi, Parth and Abdullah, Salman and Tuli, Aditi and Khanna, Shubh and Goldie, Anna and Manning, Christopher D.},
-  booktitle={ICLR},
+@inproceedings{lmcompiler,
+  title={An {LLM} Compiler for Parallel Function Calling},
+  author={Kim, Sehoon and Moon, Suhong and Tabrizi, Ryan and Lee, Nicholas and Mahoney, Michael W. and Keutzer, Kurt and Gholami, Amir},
+  booktitle={Proceedings of the 41st International Conference on Machine Learning},
+  series={Proceedings of Machine Learning Research},
+  volume={235},
+  pages={24370--24391},
+  publisher={PMLR},
   year={2024},
-  note={arXiv:2401.18059}
-}
-
-% ===== Reasoning primitives =====
-@inproceedings{cot,
-  title={Chain-of-Thought Prompting Elicits Reasoning in Large Language Models},
-  author={Wei, Jason and Wang, Xuezhi and Schuurmans, Dale and Bosma, Maarten and Ichter, Brian and Xia, Fei and Chi, Ed and Le, Quoc and Zhou, Denny},
-  booktitle={NeurIPS},
-  year={2022},
-  note={arXiv:2201.11903}
+  url={https://proceedings.mlr.press/v235/kim24y.html}
 }
 
 @inproceedings{sc,
   title={Self-Consistency Improves Chain of Thought Reasoning in Language Models},
-  author={Wang, Xuezhi and Wei, Jason and Schuurmans, Dale and Le, Quoc and Chi, Ed H. and Narang, Sharan and Chowdhery, Aakanksha and Zhou, Denny},
-  booktitle={ICLR},
+  author={Wang, Xuezhi and Wei, Jason and Schuurmans, Dale and Le, Quoc and Chi, Ed and Narang, Sharan and Chowdhery, Aakanksha and Zhou, Denny},
+  booktitle={The Eleventh International Conference on Learning Representations},
   year={2023},
-  note={arXiv:2203.11171}
-}
-
-@inproceedings{react,
-  title={{ReAct}: Synergizing Reasoning and Acting in Language Models},
-  author={Yao, Shunyu and Zhao, Jeffrey and Yu, Dian and Du, Nan and Shafran, Izhak and Narasimhan, Karthik and Cao, Yuan},
-  booktitle={ICLR},
-  year={2023},
-  note={arXiv:2210.03629}
-}
-
-@inproceedings{reflexion,
-  title={{Reflexion}: Language Agents with Verbal Reinforcement Learning},
-  author={Shinn, Noah and Cassano, Federico and Berman, Edward and Gopinath, Ashwin and Narasimhan, Karthik and Yao, Shunyu},
-  booktitle={NeurIPS},
-  year={2023},
-  note={arXiv:2303.11366}
-}
-
-@inproceedings{tot,
-  title={Tree of Thoughts: Deliberate Problem Solving with Large Language Models},
-  author={Yao, Shunyu and Yu, Dian and Zhao, Jeffrey and Shafran, Izhak and Griffiths, Thomas L. and Cao, Yuan and Narasimhan, Karthik},
-  booktitle={NeurIPS},
-  year={2023},
-  note={arXiv:2305.10601}
-}
-
-@article{verifystep,
-  title={Let's Verify Step by Step},
-  author={Lightman, Hunter and Kosaraju, Vineet and Burda, Yura and Edwards, Harri and Baker, Bowen and Lee, Teddy and Leike, Jan and Schulman, John and Sutskever, Ilya and Cobbe, Karl},
-  journal={arXiv preprint arXiv:2305.20050},
-  year={2023}
-}
-
-% ===== Long context =====
-@article{longcontext,
-  title={Lost in the Middle: How Language Models Use Long Contexts},
-  author={Liu, Nelson F. and Lin, Kevin and Hewitt, John and Paranjape, Ashwin and Bevilacqua, Michele and Petroni, Fabio and Liang, Percy},
-  journal={arXiv preprint arXiv:2307.03172},
-  year={2023}
-}
-
-@article{ruler,
-  title={{RULER}: What's the Real Context Size of Your Long-Context Language Models?},
-  author={Hsieh, Cheng-Ping and Sun, Simeng and Kriman, Samuel and Acharya, Shantanu and Rekesh, Dima and Jia, Fei and Zhang, Yang and Ginsburg, Boris},
-  journal={arXiv preprint arXiv:2404.06654},
-  year={2024}
-}
-
-% ===== Classical DBMS =====
-@inproceedings{selinger1979,
-  title={Access Path Selection in a Relational Database Management System},
-  author={Selinger, P. Griffiths and Astrahan, M. M. and Chamberlin, D. D. and Lorie, R. A. and Price, T. G.},
-  booktitle={ACM SIGMOD},
-  pages={23--34},
-  year={1979}
-}
-
-@article{graefe1993,
-  title={Query Evaluation Techniques for Large Databases},
-  author={Graefe, Goetz},
-  journal={ACM Computing Surveys},
-  volume={25},
-  number={2},
-  pages={73--169},
-  year={1993}
-}
-
-@inproceedings{chaudhuri1997autotuning,
-  title={An Efficient Cost-Driven Index Selection Tool for {Microsoft SQL Server}},
-  author={Chaudhuri, Surajit and Narasayya, Vivek},
-  booktitle={VLDB},
-  year={1997}
-}
-
-@inproceedings{chaudhuri2007selftuning,
-  title={Self-Tuning Database Systems: A Decade of Progress},
-  author={Chaudhuri, Surajit and Weikum, Gerhard},
-  booktitle={VLDB},
-  year={2007}
-}
-
-% ===== LLM foundation models (evaluated in this paper) =====
-@misc{gpt4,
-  title={{GPT-4} Technical Report},
-  author={{OpenAI}},
-  year={2023},
-  note={\url{https://arxiv.org/abs/2303.08774}}
-}
-
-@misc{claude,
-  title={The {Claude 3.5 Sonnet} Model Card},
-  author={{Anthropic}},
-  year={2024},
-  note={\url{https://www.anthropic.com/news/claude-3-5-sonnet}}
-}
-
-@misc{gemini,
-  title={{Gemini 1.5}: Unlocking Multimodal Understanding across Millions of Tokens of Context},
-  author={{Google DeepMind}},
-  year={2024},
-  note={\url{https://arxiv.org/abs/2403.05530}}
+  url={https://arxiv.org/abs/2203.11171}
 }
 
 @inproceedings{adaptiveconsistency,
-  title={Let's Sample Step by Step: Adaptive-Consistency for Efficient Reasoning and Coding with {LLM}s},
+  title={Let's Sample Step by Step: Adaptive-Consistency for Efficient Reasoning and Coding with {LLMs}},
   author={Aggarwal, Pranjal and Madaan, Aman and Yang, Yiming and Mausam},
-  booktitle={Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  booktitle={Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing},
   year={2023},
-  note={arXiv:2305.11860}
+  publisher={Association for Computational Linguistics},
+  pages={12375--12396},
+  doi={10.18653/v1/2023.emnlp-main.761},
+  url={https://aclanthology.org/2023.emnlp-main.761/}
 }
 
 @inproceedings{escsc,
   title={Escape Sky-high Cost: Early-stopping Self-Consistency for Multi-step Reasoning},
   author={Li, Yiwei and Yuan, Peiwen and Feng, Shaoxiong and Pan, Boyuan and Wang, Xinglin and Sun, Bin and Wang, Heda and Li, Kan},
-  booktitle={International Conference on Learning Representations (ICLR)},
-  year={2024}
+  booktitle={The Twelfth International Conference on Learning Representations},
+  year={2024},
+  url={https://openreview.net/forum?id=ndR8Ytrzhh}
+}
+
+@article{longcontext,
+  title={Lost in the Middle: How Language Models Use Long Contexts},
+  author={Liu, Nelson F. and Lin, Kevin and Hewitt, John and Paranjape, Ashwin and Bevilacqua, Michele and Petroni, Fabio and Liang, Percy},
+  journal={Transactions of the Association for Computational Linguistics},
+  volume={12},
+  pages={157--173},
+  year={2024},
+  doi={10.1162/tacl_a_00638},
+  url={https://aclanthology.org/2024.tacl-1.9/}
+}
+
+@inproceedings{ruler,
+  title={{RULER}: What's the Real Context Size of Your Long-Context Language Models?},
+  author={Hsieh, Cheng-Ping and Sun, Simeng and Kriman, Samuel and Acharya, Shantanu and Rekesh, Dima and Jia, Fei and Zhang, Yang and Ginsburg, Boris},
+  booktitle={First Conference on Language Modeling},
+  year={2024},
+  url={https://arxiv.org/abs/2404.06654}
 }

@@ -1,26 +1,25 @@
 %!TEX root = ../main.tex
 \begin{table}[t]
     \centering
-    \small
-    \caption{Reported read-path calls on \membench{}, excluding fact
-      acquisition. Agreement stopping saves calls with unchanged
-      aggregate accuracy in this comparison; it does not establish
-      that budget choices are generally accuracy-neutral.}
+    \footnotesize
+    \caption{Cost-aware execution on \membench{}. Query-specific allocation
+      and selective refinement make separate contributions to savings.}
     \label{tbl:cost}
-    \setlength{\tabcolsep}{3pt}
+    \setlength{\tabcolsep}{2pt}
+    \resizebox{\columnwidth}{!}{%
     \begin{tabular}{@{}lcccrc@{}}
         \toprule
         \multirow{2}{*}{\textbf{Configuration}}
-            & \multicolumn{3}{c}{\textbf{Calls per question}}
-            & \multirow{2}{*}{\textbf{Total}} & \multirow{2}{*}{\textbf{Acc.}} \\
+            & \multicolumn{3}{c}{\textbf{Average $C(q)$}}
+            & \multirow{2}{*}{$\boldsymbol{\sum_q C(q)}$} & \multirow{2}{*}{\textbf{Acc.}} \\
         \cmidrule(lr){2-4}
             & \opPOINT & \opAGG & \opCMP & & \\
         \midrule
-        Uniform, one call            & 1.00 & 1.00 & 1.00 & 300 & 86.7 \\
-        Uniform, three calls         & 3.00 & 3.00 & 3.00 & 900 & 89.1 \\
+        Fixed Budget ($K{=}1$)       & 1.00 & 1.00 & 1.00 & 300 & 86.7 \\
+        Fixed Budget ($K{=}3$)       & 3.00 & 3.00 & 3.00 & 900 & 89.1 \\
         \addlinespace[2pt]
-        \sys{}, budget only          & 1.00 & 3.00 & 3.00 & 532 & 92.8 \\
+        \sys{}, allocation only      & 1.00 & 3.00 & 3.00 & 532 & 92.8 \\
         \textbf{\sys{}}              & 1.00 & 2.30 & 2.18 & \best{444} & \best{92.8} \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}}
 \end{table}

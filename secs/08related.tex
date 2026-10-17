@@ -3,75 +3,64 @@
 \label{sec:related}
 
 \runin{Conversation and fact memory}
+MemoryBank models forgetting and reinforcement~\cite{memorybank};
+Generative Agents synthesize reflections from stored
+observations~\cite{generativeagents}.
 MemGPT manages information across context and external memory
 tiers~\cite{memgpt}. Mem0 builds persistent memory by extracting and
 updating salient conversational facts~\cite{mem0}. Zep represents
 time-dependent relationships through a temporal knowledge
 graph~\cite{zep}, while A-MEM builds linked notes that evolve with
-new experiences~\cite{agenticmem}. These systems develop fact and context
-representations. \sys{} connects raw User--Agent history and query-induced
-facts with persistent Agent--Memory experience. This second-order state
-records exposure, reported use, and execution outcomes/cost, rather than
-another semantic description of the conversation.
+new experiences~\cite{agenticmem}.
+
+\runin{Learning from memory use}
+RMM uses memory citations to update a reranker~\cite{rmm}.
+MemRL learns episodic-memory utilities from rewards~\cite{memrl}.
+Live-Evo separates an Experience Bank from a Meta-Guideline Bank and
+updates experience weights from feedback~\cite{liveevo}.
+Our model retains returned and reported-use
+fact-version IDs, support diagnostics, and action costs as persistent
+operational state. These records guide evidence access and execution
+effort across queries; raw sessions and fact provenance establish
+source support.
 
 \runin{Retrieval control and memory queries}
-LongMemEval separates memory design into indexing, retrieval, and
-reading, and evaluates information extraction, multi-session reasoning,
-temporal reasoning, knowledge updates, and abstention~\cite{longmemeval}.
+HippoRAG supports associative retrieval over a knowledge
+graph~\cite{hipporag}; MemoRAG uses global memory to generate retrieval
+clues~\cite{memorag}. LongMemEval separates indexing, retrieval, and
+reading~\cite{longmemeval}.
 MemR$^3$ uses an evidence-gap tracker and a controller that selects
-retrieval, reflection, or answering~\cite{memr3}. These precedents expose
-memory access and iterative evidence gathering. Our normalized-plan
+retrieval, reflection, or answering~\cite{memr3}.
+LOTUS defines semantic operators~\cite{lotus}; DocETL rewrites document
+processing pipelines~\cite{docetl}. LOTUS gives statistical guarantees
+relative to a reference algorithm. Our support invariant is defined over
+primitive checks and scoped plan execution. Our normalized-plan
 partition specifies the required computation; second-order experience
 changes evidence priorities, reuse, and budgets across the user's queries.
 
-\runin{Query-driven acquisition}
-EUR~\cite{eur} argues that incoming queries can reveal missing concepts
-and facts and leave reusable state for future workloads. We adopt
-query-driven acquisition for conversational evidence: first-order state
-retains the acquired facts, and second-order state retains their use and
-execution experience. Incoming information needs therefore change both
-content and later memory operations.
-
 \runin{Repeated reasoning and computational budgets}
 Self-consistency samples multiple reasoning paths and aggregates their
-answers~\cite{sc}. Agreement is useful evidence about
+answers~\cite{sc}. Adaptive-Consistency and ESC stop sampling using
+accumulated answer agreement~\cite{adaptiveconsistency,escsc}.
+Agreement is useful evidence about
 variation among outputs, but cannot verify a shared false premise.
-Our execution policy conditions additional work on source support,
-evidence coverage, unresolved dependencies, and cost experience.
-It can reuse verified values without resampling, or spend on an
-unresolved predicate or source region. Action-level forecasts require
-comparison with fixed and adaptive sampling policies.
+EVAPORATE combines extraction with generated code~\cite{evaporate};
+QUEST optimizes document-specific extraction~\cite{quest}.
+Eddies adapts operator routing at runtime~\cite{eddies}; Bao learns
+optimizer hints from execution feedback~\cite{bao}.
 
-\runin{Evaluation of long-term agent memory}
-LoCoMo studies long-term conversational recall and related tasks across
-many sessions~\cite{locomo}. LongMemEval emphasizes multiple forms of
-memory reasoning~\cite{longmemeval}, and MemBench broadens memory
-evaluation across scenarios and question types~\cite{membench}.
-Their category labels are not normalized-plan classes. We distinguish
-benchmark-level observations from validation of dependency routing,
-fact-version credit, and action forecasts.
+Our policy reuses verified values and allocates acquisition or
+verification to unresolved predicates, sources, coverage, and dependencies
+using historical costs. These decisions use persistent, per-user records
+of evidence exposure, reported consumption, and action outcomes.
+Additional calls target evidence gaps; an unchanged premise is not resampled.
 
-% Balance the last page before its left column has shipped.
-\balance
 \section{Conclusion}
 \label{sec:conclusion}
 
-\sys{} evolves both memory content and operations. Closed User--Agent
-conversations extend raw sessions; queries acquire first-order facts.
-Agent--Memory executions and validated use reports extend second-order
-experience, including empty-result outcomes and cost. Facts help the
-agent understand the user; experience helps memory understand how to
-serve the user. Single-fact retrieval, independent composition, and
-dependent composition expose the required computation. Cost-aware
-execution allocates work from current gaps and remembered outcomes,
-preserving partial or unknown support whenever an obligation remains.
-
-The prototype evaluation covers eight benchmarks and eight LLM
-backbones, with gains up to $5.6$ points on \lmes{} and $50.7\%$ fewer
-read-path calls than Uniform-$K{=}3$ on \membench{} at higher accuracy.
-These measurements support evidence processing, workload-guided access,
-and selective execution. Targeted validation of normalized-plan routing,
-fact-version attribution, action forecasts, and acquisition-inclusive
-costs remains necessary, as does reconciliation of the per-pattern
-aggregation. The interface retains explicit incomplete results wherever
-source or computation obligations remain unresolved.
+\sys{} evolves long-term agent memory in content and use through source
+sessions, reusable query-induced facts, Agent--Memory experience, three
+query-specific pipelines, and cost-aware execution. Across eight benchmarks, it
+matches or improves the strongest evaluated prior system by $2.6$ points on
+average. On \membench{}, it reduces memory-side LLM calls by $50.7\%$ while
+attaining higher accuracy.

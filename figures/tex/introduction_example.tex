@@ -5,6 +5,8 @@
  font=\sffamily\footnotesize,
  box/.style={draw=#1,line width=0.8pt,rounded corners=2pt,
   fill=#1!7,text width=6.35cm,align=left,inner sep=5pt},
+ turn/.style={draw=darkgray_x11,line width=0.8pt,rounded corners=2pt,
+  fill=white,text width=6.35cm,align=left,inner sep=5pt},
  flow/.style={->,>=Stealth,line width=1.0pt},
  feedback/.style={->,>=Stealth,line width=1.2pt,dashed,
   rounded corners=7pt}
@@ -14,16 +16,18 @@
  Mar.\ 2: \emph{Ava arranged our 4-hour outdoor hike.}\\
  Mar.\ 9: \emph{Ben booked my 2-hour indoor pottery class.}\\
  Mar.\ 16: \emph{Cara arranged our 3-hour outdoor ride.}};
-\node[box=softblue,below=0.28cm of raw] (facts) {
- \textbf{Question $Q_1$ (Mar.\ 17):} \emph{Whom should I contact to repeat my
- March outdoor activities?}\\[3pt]
- \textbf{First-order $\Ff$ for query $q_1$:} settings and organizers\\
+\node[turn,below=0.22cm of raw] (turn1) {
+ \textbf{User--Agent turn (Mar.\ 17).}
+ $Q_1$: \emph{Whom should I contact to repeat my March outdoor activities?}};
+\node[box=softblue,below=0.22cm of turn1] (facts) {
+ \textbf{Agent--Memory exchange.}
+ Query $q_1$ requests March activities, settings, and organizers.\\[2pt]
+ \textbf{Retrieved memory $m_1$ from first-order $\Ff$:}\\
  Hike: outdoors, Ava;\quad Pottery: indoors, Ben;\\
  Ride: outdoors, Cara.\quad Durations are not yet needed.};
 \node[box=cadmiumgreen,below=0.28cm of facts] (use) {
- \textbf{Second-order $\Uu$: Agent--Memory experience}\\
- \textbf{Answer $A_1$: Ava for the hike; Cara for the ride.}\\[3pt]
- Complete use report: credit all settings and Ava/Cara links.
+ \textbf{Second-order $\Uu$: Agent--Memory experience.}\\
+ After $A_1$, a complete use report credits all settings and Ava/Cara links.
  Ben's link was returned but unused; retain query execution cost.
  These observations change later priorities and cost estimates.};
 \node[box=softorange,below=0.42cm of use] (next) {
@@ -37,7 +41,8 @@
  not repeated judgments of every known fact.\\[3pt]
  \textbf{Answer $A_2$: Ava.} Durations enrich $\Ff$; their reported use
  and acquisition cost update $\Uu$ for future queries.};
-\draw[flow,softblue] (raw.south) -- (facts.north);
+\draw[flow,darkgray_x11] (raw.south) -- (turn1.north);
+\draw[flow,softblue] (turn1.south) -- (facts.north);
 \draw[flow,cadmiumgreen] (facts.south) -- (use.north);
 \draw[flow,cadmiumgreen] (use.south) --
  node[midway,right,font=\scriptsize,text=cadmiumgreen,

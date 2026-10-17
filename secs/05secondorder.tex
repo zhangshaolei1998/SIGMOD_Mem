@@ -6,8 +6,8 @@ feedback-observed exposure count $n^r(f,z)$ and a credited-use count
 $n^u(f,z)$. Contexts identify topic, temporal intent, and evidence
 requirements. A complete agent use report increments $n^r$ once for
 each returned fact and $n^u$ once for each fact in the validated reported-use set.
-Thus $0\leq n^u\leq n^r$. Incomplete or missing reports update neither count:
-unknown use is not treated as non-use. All retrieval traces and
+Thus $0\leq n^u\leq n^r$. Incomplete or missing reports update neither count,
+preserving the distinction between unknown use and non-use. All retrieval traces and
 execution costs are still retained.
 
 With positive use/non-use prior counts $\alpha_0,\beta_0$,

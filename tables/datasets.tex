@@ -2,25 +2,22 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{The eight benchmarks, grouped by the memory ability they stress.
-      Their history lengths cover a broad range. Cross-benchmark differences
-      alone do not isolate representation effects from context length
-      or task difficulty.}
+    \caption{Eight benchmarks and input lengths in the evaluation.}
     \label{tbl:benchmarks}
     \setlength{\tabcolsep}{4pt}
     \begin{tabular}{@{}llr@{}}
         \toprule
-        \textbf{Benchmark} & \textbf{Memory ability} & \textbf{History} \\
+        \textbf{Benchmark} & \textbf{Memory ability} & \textbf{Input} \\
         \midrule
         \locomo~\cite{locomo}         & Multi-session dialogue    & $\sim$9K \\
-        \lmev~\cite{longmemeval}      & Entity-centric recall     & $\sim$115K \\
-        \membench~\cite{membench}     & Typed query patterns   & $\sim$100K \\
+        \lmev~\cite{longmemevalv2}    & Environment experience    & $\sim$115K \\
+        \membench~\cite{membench}     & Query-specific evidence pipelines & $\sim$100K \\
         \addlinespace[2pt]
         \lmeo~\cite{longmemeval}      & Long-horizon retention    & $\sim$40K \\
         \lmes~\cite{longmemeval}      & Long-horizon retention    & $\sim$115K \\
         \lmem~\cite{longmemeval}      & Long-horizon retention    & $\sim$1.5M \\
         \addlinespace[2pt]
-        \evomem~\cite{evomemory}      & Evolving user state       & $\sim$50K \\
+        \evomem~\cite{evomemory}      & Task-stream adaptation    & $\sim$50K \\
         \dynamicmem~\cite{dynamicmem} & Evolving user state       & $\sim$127K \\
         \bottomrule
     \end{tabular}
