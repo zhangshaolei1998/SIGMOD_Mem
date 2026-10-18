@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% MemCatalog: A Continually Evolving Memory Management System for LLM Agents
+%% MemCatalog: A Self-Evolving Memory Management System for LLM Agents
 %% ACM SIGMOD submission (acmart sigconf)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -25,9 +25,9 @@
 \input{_commands}
 
 \begin{document}
-\raggedbottom
+\flushbottom
 
-\title{\sys{}: A Continually Evolving Memory Management System for LLM Agents}
+\title{\sys{}: A Self-Evolving Memory Management System for LLM Agents}
 
 \author{Anonymous Author(s)}
 \affiliation{%
@@ -40,27 +40,33 @@
 \renewcommand{\shortauthors}{Anonymous Author(s)}
 
 \begin{abstract}
-Long-term LLM agents need memory that evolves in both what it stores and
-how it uses stored evidence. Existing systems primarily retain user facts,
-leaving the experience of memory use unrecorded, and commonly apply one
-retrieval path to queries with different evidence requirements. We present
-\sys{}, a continually evolving memory management system for LLM agents.
-Its hierarchy retains raw User--Agent sessions, acquires source-backed
-first-order facts on demand, and records second-order Agent--Memory
-experience, including returned evidence, validated use, action outcomes,
-and cost. For performance, normalized finite acyclic plans are partitioned
-into single-fact retrieval, independent composition, and dependent
-composition; each pipeline makes its coverage and binding obligations
-explicit, while second-order experience guides grounding. For efficiency,
-cost-aware execution combines current evidence gaps with historical action
-outcomes to allocate a query-specific call budget and stop when further
-work is not worthwhile. Across eight long-term memory benchmarks, \sys{}
-matches or improves the strongest evaluated prior system on every benchmark
-by $2.6$ points on average and, on \membench{}, reduces memory-side LLM
-calls by $50.7\%$ while attaining higher accuracy.
+LLM agents use persistent memory to recover user information from past
+conversations. Existing systems manage stored content but provide limited
+support for learning from agent--memory interactions: memory queries,
+returned facts, the agent's reported use, and execution outcomes and costs.
+We present \sys{}, a self-evolving memory management system that uses
+these records to adapt later queries. The first challenge is attributing
+reported use when an answer combines facts that can change over time.
+A three-level architecture links raw conversations; first-order memory,
+containing facts extracted for queries; and second-order memory, containing
+records of their retrieval, reported use, and execution. Version identifiers
+and links from computed results to supporting facts keep this attribution
+consistent. The second challenge is deciding where more computation is
+useful when queries require different facts and prior work can be reused.
+Workload-aware memory queries adapt processing to the current request and
+historical use records. Query-specific pipelines retrieve one fact, combine
+independent facts, or resolve requests that depend on earlier results.
+Cost-aware execution reuses verified results and chooses further acquisition
+or verification by its predicted reduction in missing evidence and LLM-call
+cost, updating its choices after each outcome.
+Across eight long-term memory benchmarks, \sys{} matches or improves the
+strongest evaluated prior system on each benchmark, with an average gain
+of $2.6$ points. On \membench{}, it achieves higher accuracy with $50.7\%$
+fewer memory-side LLM calls than a fixed three-call budget.
 \end{abstract}
 
 %% CCS concepts. Generated from https://dl.acm.org/ccs.
+\iffalse % Temporarily disable CCS metadata and its printed block.
 \begin{CCSXML}
 <ccs2012>
    <concept>
@@ -90,9 +96,10 @@ calls by $50.7\%$ while attaining higher accuracy.
 \ccsdesc[500]{Information systems~Query optimization}
 \ccsdesc[300]{Computing methodologies~Natural language processing}
 \ccsdesc[100]{Computing methodologies~Multi-agent systems}
+\fi
 
-\keywords{Evolving agent memory, memory operations, second-order memory,
-  query-driven facts, cost-aware execution}
+\keywords{Agent memory management, self-evolving memory, second-order memory,
+  workload-aware queries, cost-aware execution}
 
 \maketitle
 
@@ -106,8 +113,9 @@ calls by $50.7\%$ while attaining higher accuracy.
 \input{secs/08related}
 
 % References are excluded from the twelve-page main paper.
+\par\pagebreak
 \clearpage
-\nobalance
+\balance
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{memcatalog}
 

@@ -2,18 +2,18 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Query-plan classification on \membench{}.}
+    \caption{Answer accuracy and compilation cost on \membench{}.}
     \label{tbl:routing}
     \setlength{\tabcolsep}{4pt}
     \resizebox{\columnwidth}{!}{%
-    \begin{tabular}{@{}lccc@{}}
+    \begin{tabular}{@{}lcc@{}}
         \toprule
-        \textbf{Plan compiler} & \textbf{Plan-class acc.} & $\boldsymbol{C_{\mathrm{plan}}(q)}$ & \textbf{Answer acc.} \\
+        \textbf{Plan compiler} & $\boldsymbol{C_{\mathrm{plan}}(q)}$ & \textbf{Answer acc.} \\
         \midrule
-        Rule-based (ours) & 91.4 & 0 & 92.8 \\
-        LLM plan compiler  & 95.1 & 1 & 93.2 \\
-        Always \point      & 61.3 & 0 & 87.5 \\
+        Rule-based (ours) & 0 & 92.8 \\
+        LLM plan compiler  & 1 & 93.2 \\
+        Always \point      & 0 & 87.5 \\
         \bottomrule
     \end{tabular}}
-    \Description{Query-plan classification on MemBench.}
+    \Description{Answer accuracy and plan-compilation calls on MemBench.}
 \end{table}

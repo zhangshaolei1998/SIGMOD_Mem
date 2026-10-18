@@ -1,17 +1,17 @@
 %!TEX root = ../main.tex
 \label{sec:secondorder}
 
-For a fact version $f$ and query context $z$, $\Uu$ retains a
-feedback-observed exposure count $n^r(f,z)$ and a credited-use count
-$n^u(f,z)$. Contexts identify topic, temporal intent, and evidence
-requirements. A complete agent use report increments $n^r$ once for
+For a fact version $f$ and query context $z$, $\Uu$ retains an
+exposure count $n^r(f,z)$ observed under feedback declared complete and a
+credited-use count $n^u(f,z)$. Contexts identify topic, temporal intent, and evidence
+requirements. A validated report declared complete increments $n^r$ once for
 each returned fact and $n^u$ once for each fact in the validated reported-use set.
 Thus $0\leq n^u\leq n^r$. Incomplete or missing reports update neither count,
 preserving the distinction between unknown use and non-use. All retrieval traces and
 execution costs are still retained.
 
 With positive use/non-use prior counts $\alpha_0,\beta_0$,
-contextual use propensity and grounding priority are
+contextual reported-use propensity and grounding priority are
 \begin{equation}
 \label{eq:pi}
 \begin{aligned}
@@ -20,12 +20,11 @@ s(f\mid q)&=\operatorname{rel}(f,q)\,u(f\mid q).
 \end{aligned}
 \end{equation}
 Here $\operatorname{rel}(f,q)\in[0,1]$ is current query relevance.
-The ratio estimates reported use conditional on complete feedback,
-not factual truth or the probability of a correct answer.
+The ratio estimates reported use conditional on feedback declared complete.
 Source and version checks establish support independently.
 When a grounding batch has eligible alternatives, one position is
 reserved for a relevant, least-exposed fact in the current context,
 breaking ties by fact-version ID; the other positions follow $s$.
 The reserved position admits underexposed eligible evidence.
 Priorities affect the order of work, never the population or dependency
-obligations of the plan.
+checks required by the plan.

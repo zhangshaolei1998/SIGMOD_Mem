@@ -2,8 +2,7 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Answer quality by position in a user's query history, during
-      which user evidence and second-order Agent--Memory experience accumulate.}
+    \caption{\evomem{} answer scores by position in a user's query history.}
     \label{tbl:second_order_learning}
     \begin{tabular}{@{}lcccc@{}}
         \toprule
@@ -17,12 +16,6 @@
         Mem0~\cite{mem0}               & 20.1 & 20.5 & 20.4 & 20.2 \\
         Zep~\cite{zep}                 & \second{21.8} & \second{22.2} & \second{22.1} & \second{22.0} \\
         \textbf{\sys{}}                & \best{22.2} & \best{24.4} & \best{26.1} & \best{27.8} \\
-        \addlinespace[2pt]
-        \tblgroup{5}{\dynamicmem} \\
-        Full-Context                   & 28.7 & 28.8 & 28.6 & 28.4 \\
-        Mem0~\cite{mem0}               & \second{29.4} & 29.8 & 29.6 & 29.3 \\
-        Zep~\cite{zep}                 & \best{29.9} & \second{30.0} & \second{29.9} & \second{29.8} \\
-        \textbf{\sys{}}                & 29.1 & \best{30.3} & \best{31.7} & \best{32.8} \\
         \bottomrule
     \end{tabular}
 \end{table}

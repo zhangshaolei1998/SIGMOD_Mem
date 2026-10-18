@@ -84,12 +84,10 @@
         \node[vmc] at (135:\R) {};         \node[lblmc, above right] at (135:\R) {34.9};
     \end{tikzpicture}
     }
-    \caption{Answer scores across eight benchmarks. Each axis has its own
-      linear scale from Full-Context (inner ring) to \sys{} (outer ring);
-      annotated values are raw scores. Prior Best is Mem0 on \membench{},
-      LongMemEval-Fw on \lmev{}, and Zep elsewhere
-      (Table~\ref{tbl:main_results}). Compare systems within an axis,
-      not polygon areas across benchmarks.}
+    \caption{Benchmark scores, normalized separately on each axis between
+      Full-Context (inner ring) and \sys{} (outer ring). Labels give raw
+      scores; Prior Best is the strongest evaluated baseline per benchmark
+      (Table~\ref{tbl:main_results}).}
     \Description{Radar chart of answer scores over eight long-term memory benchmarks. On each
       axis MemCatalog lies on the outermost octagon, the strongest prior memory
       system lies between it and the Full-Context baseline on the innermost

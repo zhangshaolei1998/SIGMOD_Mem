@@ -1,67 +1,81 @@
 %!TEX root = ../main.tex
-\section{For Efficiency: Cost-Aware Execution}
+\section{Cost-Aware Query Execution}
 \label{sec:executor}
 
-The selected pipeline specifies the required computation; the executor
-decides how much of its remaining evidence work to fund.
-One independent-composition query can reuse every value; another must acquire a
-missing property or revisit an ambiguous source. Cost-aware execution
-allocates work from the current evidence state and second-order
-action experience, then revises that allocation as evidence changes.
-Adaptive sampling also varies inference effort across
-questions~\cite{adaptiveconsistency,escsc}; our actions address specific
-evidence obligations and can include acquisition or verification.
+The pipeline fixes the result's evidence requirements. Execution selects
+unresolved work and decides when to stop. A value can unlock a lookup;
+a discovered event can add judgments; a completed check can make another
+action redundant. \sys{} therefore reselects actions after each outcome,
+using second-order experience to predict evidence benefit and cost.
+Predicted mean cost ranks work; maximum reservations enforce the call
+cap. Adaptive sampling varies inference effort across
+questions~\cite{adaptiveconsistency,escsc}; here selection concerns the
+remaining evidence checks.
 
-\subsection{Query-Specific Budget Allocation}
+\subsection{Estimating Evidence Benefit and Cost}
 \label{subsec:new-budget}
 
 An action is a bounded unit of evidence work: acquire a source-backed
 property, verify a disputed value, resolve a plan block, or check its result.
+Each pipeline supplies a finite set of bounded action templates. A
+template identifies required inputs, the evidence checks it targets,
+and its maximum call reservation. Instantiation uses the current query,
+candidate population, and cached supports. Valid cached support removes
+completed work; unresolved bindings identify prerequisites.
 Let $\tau(q)$ be the executed action sequence, with $\tau_j(q)$ its
 $j$th occurrence. In memory-side LLM calls,
 \begin{equation}
 \label{eq:cost}
 C(q)=C_{\mathrm{plan}}(q)+\sum_{j=1}^{|\tau(q)|}c(\tau_j(q)).
 \end{equation}
-Each invocation is charged exactly once, including repeated actions.
-Semantic synthesis or validation by $g$ is charged as an execution action.
-The ledger also charges acquisition and verification, including work
-that populates reusable facts. Deterministic reads, selection, and arithmetic use zero
-LLM calls but can still incur latency. Agent-side query formulation
-and final answer generation are accounted for separately in an
-end-to-end ledger.
+Every invocation is charged once, including repeated actions,
+acquisition, verification, and semantic synthesis or validation by $g$.
+Deterministic reads, selection, and arithmetic use zero LLM calls but
+can incur latency. A call that reads memory and directly produces the
+answer is charged once to $C(q)$ as result computation. Additional
+agent-only query formulation and answer rendering are recorded separately.
 
-The executor maintains evidence obligations for scope coverage, values,
-versions, bindings, and result checks.
-For the current snapshot of instantiated obligations $\Omega$, let
+\runin{Measuring evidence benefit}
+The executor tracks the required checks for scope coverage, values,
+versions, bindings, and results. A check is resolved by establishing its
+required evidence against the current source snapshot. Deterministic
+consequences of newly verified values, such as a comparison, are then
+propagated through the plan.
+For the current set of instantiated checks $\Omega$, let
 $\ell(\Omega)$ be the unresolved fraction, with $\ell(\varnothing)=0$;
 conflicts leave a check
-unresolved. This diagnostic measures the remaining evidence gaps.
-Certification additionally requires a validated plan; ambiguous
-compilation remains an unresolved check.
+unresolved. A validated plan and $\ell(\Omega)=0$ establish a supported
+result; ambiguous compilation leaves a required check unresolved.
 
 An action's observed reduction compares the same pre-action set:
 $\Delta\ell(a)=\ell_{\mathrm{before}}(\Omega)-
 \ell_{\mathrm{after}}(\Omega)$.
-Newly discovered candidates add obligations to the next decision's
-snapshot, not to this comparison's denominator.
-Thus useful scope discovery is not penalized merely for exposing
-additional work. The executor then checks the expanded set before
-certifying a result or allocating the next action.
+Newly discovered candidates add checks to the next decision's set.
+Keeping the pre-action set fixed separates resolution of existing gaps
+from discovery of additional work. The executor uses the expanded set
+to determine support and select the next action.
+A scan discovering the rain-altered outing can resolve coverage while
+introducing an unknown setting. Measuring reduction on the original set
+credits the completed coverage check; the next decision's expanded set
+retains the new setting requirement.
 
-For each executed action, $\Uu$ stores its context, obligation snapshot,
-observed reduction, and actual call cost. A context signature contains action
+\runin{Learning from comparable actions}
+For each executed action, $\Uu$ stores its context, pre-action check set,
+resolved checks, observed reduction, and actual call cost. The matching context contains action
 kind, plan class, unresolved-check types, candidate count, dependency
 depth, and cache availability (all, some, or none).
 
 To estimate an available action's
-diagnostic reduction $\widehat{\Delta\ell}(a)$ and cost $\widehat c(a)$,
+evidence resolution $\widehat{\Delta\ell}(a)$ and cost $\widehat c(a)$,
 the executor averages matched historical reductions and costs with one
-declared prior observation. Detailed signatures match these fields exactly.
-It backs off from the detailed signature
+declared prior observation. Detailed contexts match these fields exactly.
+It backs off from the detailed context
 to the same user's action-kind/plan-class history, then to the prior.
 The same fields and backoff order apply to every action estimate.
-These are predictions from executed actions, not counterfactual labels.
+Estimates are restricted to the template's currently unresolved checks:
+benefit is zero if all its targets are supported and is bounded by their
+unresolved fraction in $\Omega$. Cache availability, dependency depth,
+and candidate count distinguish work within the same plan class.
 
 A cold-start template supplies the initial reduction and call-cost
 estimates. Its weight decreases as matched action records accumulate.
@@ -69,12 +83,35 @@ Each action declares an enforced maximum reservation $c_{\max}(a)$:
 $0\leq c(a)\leq c_{\max}(a)$, distinct from its predicted mean cost.
 An action that reaches its reservation returns its current evidence state.
 
-First-order evidence identifies cache hits and unresolved obligations;
+\subsection{Adaptive Selection and Refinement}
+\label{subsec:new-value}
+
+\runin{Selecting ready work and its prerequisites}
+A lookup with an unresolved input waits for its predecessor. A sequence
+template lists a bounded set of prerequisite actions in dependency order,
+with later inputs bound to earlier outputs. Instantiation removes work
+already supported by cached facts and checks that the first remaining
+action is ready. The sequence has its own matched context; its maximum
+reservation covers all remaining action occurrences. Its observed gain
+is the reduction on the common pre-sequence check set, so a check
+resolved by several internal actions receives credit once.
+If an internal action leaves the next binding unsupported, the sequence
+returns its partial evidence and releases the remaining reservation.
+For the longest-activity organizer, duration acquisition and comparison
+can thus be priced together with the lookup they enable. The candidate
+set contains instantiated ready actions and sequence templates; newly
+discovered candidates trigger instantiation again.
+
+First-order evidence identifies cache hits and unresolved checks;
 second-order experience supplies the matched reductions and costs.
 From dependency-ready actions, the executor constructs a worklist
-$\mathcal A_+(q)$ in descending predicted net benefit
+$\mathcal A_+(q)$ by scanning candidates in descending predicted net benefit
 $\widehat{\Delta\ell}(a)-\lambda\widehat c(a)$.
-Only positive-benefit actions that fit the remaining hard cap are admitted.
+A positive-benefit candidate is appended when its maximum reservation,
+together with those already admitted, fits the remaining hard cap.
+The maximum reservation, rather than the predicted mean, controls
+admission: a cheap action on average can still require more calls than
+the remaining budget permits.
 The current additional-call budget is
 \begin{equation}
 \label{eq:new-adaptive-budget}
@@ -85,13 +122,10 @@ Here finite $K_{\max}(q)\geq0$ caps all memory-side calls, including planning, a
 $C_{\mathrm{spent}}$ records calls already paid.
 Planning is invoked only under a reservation that fits the cap; otherwise
 the system stops with the plan unresolved.
-$\lambda\geq0$ prices diagnostic reduction against calls.
-The worklist, $C_{\mathrm{spent}}(q)$, and $K(q)$ are updated at each
-decision. After each action, unused reservations are released
-and the worklist is rebuilt from the new evidence state.
-
-\subsection{Selective Refinement and Experience Feedback}
-\label{subsec:new-value}
+$\lambda\geq0$ prices evidence resolution against calls.
+The worklist and $K(q)$ are rebuilt after each action using the new
+evidence state and spent cost. Newly discovered candidates and ready
+lookups can therefore change both the selected work and its reservation.
 
 When admissible actions exist, the next action maximizes predicted net benefit:
 \begin{equation}
@@ -103,31 +137,55 @@ a^*&\in\argmax_{a\ \mathrm{admissible}}
  \widehat{\Delta\ell}(a^*)>\lambda\widehat c(a^*).
 \end{aligned}
 \end{equation}
-If no action is admissible, execution stops.
-Admissibility requires available inputs and a reservation that fits
-the remaining cap. A prerequisite sequence with delayed benefit can
-be evaluated as one bounded bundle, charging every invocation within it.
-The bundle is an action template with its own context and enforced
-reservation; its reduction and cost are estimated and recorded by the
-same rule as other actions.
-A bundle's first action must be ready, with later inputs supplied by
-earlier actions in the bundle.
+If no action is admissible, execution stops. Admissibility requires
+available inputs and a reservation that fits the remaining cap.
 
-Free deterministic work is not repeated on unchanged inputs.
-Repeated semantic judgments consume calls from the hard cap.
-With a finite plan and source snapshot, these rules prevent an
-unresolved gap from inducing an unlimited retry loop.
+Only the first selected candidate executes. The rebuilt worklist removes
+completed checks and reusable prerequisites before re-estimation. For
+example, acquiring a duration can settle the winner by comparison,
+removing a separate winner-verification action; a conflicting duration
+leaves verification available.
 
-Execution reuses verified subresults and spends only on unresolved
-work. Semantic disagreement can trigger another judgment; shared
-unsupported evidence triggers source acquisition because voting cannot
-establish source support.
-If an input changes, only its dependent descendants are invalidated
-and recomputed. Exhausting the cap or declining further work does not
-convert a gap into a supported result: $\sigma$ remains partial or
-unknown as appropriate.
+\runin{Updating the reservation and preserving reuse}
+Only the selected action spends calls. Releasing its unused reservation
+and rebuilding the worklist lets newly ready actions compete for the
+remaining budget. Because actual cost is bounded by the admitted
+reservation, each completed action leaves total spent cost within
+$K_{\max}(q)$. The same test applies to a prerequisite sequence, including
+all of its internal calls.
 
-\begin{memoryexample}{Example 3: reuse completed work, resolve the new gap}
+\begin{figure}[t]
+\centering
+\begin{minipage}{0.98\columnwidth}
+\small
+\hrule\smallskip
+\textbf{Execution loop for a validated plan $P$}
+\begin{enumerate}[leftmargin=*,nosep]
+\item Reuse valid facts and subresults; propagate their deterministic
+consequences and update the unresolved checks.
+\item Instantiate ready actions and bounded prerequisite sequences;
+estimate their remaining evidence benefit and cost from $\Uu$.
+\item Form $\mathcal A_+(q)$ under Eq.~\eqref{eq:new-adaptive-budget}.
+Stop if it is empty; otherwise select $a^*$ by Eq.~\eqref{eq:short}.
+\item Execute $a^*$ within its reservation, charging each invocation once.
+Retain acquired facts and record resolved checks, outcome, and actual cost.
+\item Release tentative reservations and repeat from step~1 with the
+updated state. Return $(v,E,\sigma)$ when no further work is selected.
+\end{enumerate}
+\smallskip\hrule
+\end{minipage}
+\caption{Cost-aware execution with reuse and outcome-dependent reselection.}
+\label{fig:execution-loop}
+\end{figure}
+
+Deterministic work is not repeated on unchanged inputs; semantic retries
+consume the finite cap. With a finite plan and snapshot, execution
+terminates. Disagreement can trigger verification, while unsupported
+evidence requires acquisition. An input change invalidates only its
+dependent descendants. On stopping, unresolved checks retain partial or
+unknown $\sigma$; they cannot become supported through budget exhaustion.
+
+\begin{memoryexample}{Example 3: reuse and selective acquisition}
 \textbf{Warm query.} Alice again compares the outdoor activities.
 Reuse verified settings and durations: $4>3$, with $K(q)=0$ additional
 memory-side calls. Agent answer generation is separate.
@@ -152,10 +210,6 @@ four-candidate scope supports $[2,3]$, not an exact count.
 Repeating the planned-picnic fragment cannot resolve this gap.
 \end{memoryexample}
 
-Query totals $C(q)$, action outcomes, and diagnostic changes update
-$\Uu$ independently of whether the agent supplies a use report.
-Validated reported use updates the
-fact-priority statistics in Section~\ref{subsec:new-experience}.
-The records distinguish cold acquisition from warm reuse and guide the
-next query's priorities and budget. Acquired facts evolve content;
-remembered use, outcomes, and cost evolve memory operations.
+$\Uu$ stores $C(q)$, action outcomes, and evidence resolution independently
+of use reports. Validated reported use updates fact priorities
+(Section~\ref{subsec:new-experience}).

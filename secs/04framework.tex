@@ -1,15 +1,21 @@
 %!TEX root = ../main.tex
-\section{For Performance: Query-Specific Pipelines}
+\section{Query-Specific Pipelines for Accuracy}
 \label{sec:framework}
 
-A memory query requires evidence and a computation over that evidence.
-The pipelines distinguish single-fact retrieval from independent and
-dependent composition. Prior systems expose semantic
-operators and subtask structure~\cite{lotus,docetl,decomposed,lmcompiler}.
-Here, second-order experience guides
-grounding without changing support requirements.
+A memory query determines which facts should be combined and which
+dependencies should be resolved. The current memory state determines
+how much of that work is already complete. We use these two inputs
+together: a query-specific pipeline specifies how to obtain the required
+facts and combine them into a result;
+first-order facts supply reusable values; second-order experience guides
+their access and the cost of unresolved work. Optimization acts on the
+execution of this computation: which evidence to read, which subresults
+to reuse, and which acquisition or verification action to perform next.
+Section~\ref{sec:executor} gives the selection objective and stopping rule.
+Semantic operators and subtask graphs provide related
+abstractions~\cite{lotus,docetl,decomposed,lmcompiler}.
 
-\subsection{A Complete Partition of Query Plans}
+\subsection{Query Plans and Evidence Requirements}
 \label{subsec:new-plans}
 
 The three plans are \emph{single-fact retrieval} (\ret),
@@ -52,20 +58,32 @@ edge or has none; an edge-free plan is either atomic or non-atomic.
 Each well-formed normalized finite acyclic plan therefore selects
 exactly one pipeline.
 
-The partition classifies the chosen plan; a natural-language question
-can admit several plans. For the longest-outdoor-activity organizer, we use a goal-directed
-plan: select the event, then bind it to an organizer lookup.
-An alternative that fetches every organizer before selecting could be
-independent. Both plans represent the same question, but incur different
-work.
+This classification fixes the computation's coverage and dependency
+requirements. Evidence sources, access order, reuse, and execution
+budget remain state-dependent decisions. Across queries, a new session can enlarge a
+population; a verified fact can eliminate acquisition; a resolved
+predecessor can unlock a lookup. Query processing adapts these decisions
+while retaining the plan's evidence requirements.
 
-The compiler exposes the chosen computation and validates entity/time
-scopes, bindings, and $g$. Model-assisted compilation is charged when
-needed; ambiguous scope remains an unresolved obligation. The partition
-applies to the resulting normalized plan.
+The compiler supplies one normalized plan and validates its entity/time
+scopes, bindings, and $g$. The partition applies to that plan; different
+semantics-preserving representations of a question can expose different
+bindings. For example, a longest-activity query can request the winner's
+organizer after comparison or acquire every organizer before selection.
+Once a plan is fixed, evidence access, reuse, action ordering, and
+stopping are selected from the current memory state. Model-assisted
+compilation is charged; ambiguous scope leaves a required check unresolved.
 
-\subsection{Learning to Ground and Execute}
+\subsection{Experience-Guided Evidence Access}
 \label{subsec:new-experience}
+
+\emph{Grounding} obtains source-backed evidence for a request.
+All pipelines use $E_i=\operatorname{Ground}(r_i,\Mm)$ against $q$'s
+fixed source snapshot. Grounding checks identity, scope, source, and
+version, reuses eligible facts, and acquires missing evidence from raw
+sessions (Section~\ref{subsec:new-evolution}). Experience orders facts
+and source regions without replacing these checks. Paid acquisition and
+semantic verification are bounded actions (Section~\ref{sec:executor}).
 
 \input{secs/05secondorder}
 
@@ -75,14 +93,16 @@ matched contact context.
 This changes the priority of equally relevant facts while preserving
 their source-based support; an indoor-activity request can still favor Ben.
 
-All pipelines use $E_i=\operatorname{Ground}(r_i,\Mm)$ against $q$'s
-fixed source snapshot.
-Grounding checks identity, scope, source, and version, reuses eligible
-facts, and acquires unmet evidence from raw sessions
-(Section~\ref{subsec:new-evolution}). Experience orders facts and source
-regions without replacing those checks.
+For each request, grounding first checks reusable fact versions and
+their required supports. A valid cache hit discharges that evidence
+work; a missing value, changed scope, or unresolved version leaves work
+for acquisition or verification. The priority in Eq.~\eqref{eq:pi}
+orders eligible alternatives within this residual work. Population
+coverage and predecessor checks remain required throughout execution.
+This separates opportunities to reduce evidence work from the checks
+that establish the result.
 
-\runin{Single-fact retrieval: locate, verify, return}
+\runin{Single-fact retrieval}
 For an individual target, ground its evidence and select the
 source-supported value at the requested time:
 $v=\operatorname{Select}(r,E)$.
@@ -90,7 +110,7 @@ Unresolved identity, conflicting versions, or absent support leaves a
 gap; a missing fact remains unknown.
 Verified cached evidence can be returned without another semantic judgment.
 
-\runin{Independent composition: ground, evaluate, combine}
+\runin{Independent composition}
 With no cross-request bindings, ground the requests independently and
 apply $g$ to their values. A tuple can combine a preference and an allergy.
 For a population block, establish its scope, deduplicate identities,
@@ -120,7 +140,7 @@ closed scope, return $[h,h+u]$ with partial support.
 Without coverage, only $h$ is a justified lower bound.
 A highly ranked subset cannot establish an exact count.
 
-\runin{Dependent composition: resolve, bind, continue}
+\runin{Dependent composition}
 A node is ready only when every required predecessor has
 $\sigma_j=\texttt{supported}$. Evaluate ready nodes in topological
 order, then finalize $g$ only when its required inputs are supported:
@@ -135,7 +155,7 @@ v&=g(v_1,\ldots,v_d).
 $\operatorname{Solve}$ executes the normalized retrieval or independent
 block. Ready branches can run concurrently; a bound request returns
 to grounding for its newly determined target.
-A blocked node retains its unresolved predecessor obligation and waits
+A blocked node retains its unresolved predecessor check and waits
 before being passed to $\operatorname{Solve}$.
 
 Available supports yield a partial response; no established evidence
@@ -156,7 +176,7 @@ With correct primitive checks and scope interpretation, independent
 reduction and dependency-ordered binding preserve this invariant by
 induction. Use scores and budgets cannot close unresolved checks.
 
-\begin{memoryexample}{Example 2: one fact, independent evidence, dependent evidence}
+\begin{memoryexample}{Example 2: evidence requirements of the three plans}
 Use Alice's three March activities from Example~1.
 
 \smallskip
@@ -175,6 +195,6 @@ Select \texttt{hike-1}, bind it to the organizer lookup, and return Ava.
 An unresolved winner cannot justify choosing Ava over Cara.
 
 \smallskip
-Retain new durations in $\Ff$. A consumed-result use report credits its
+Retain new durations in $\Ff$. Reported result use credits its
 supporting facts, including exclusion evidence.
 \end{memoryexample}

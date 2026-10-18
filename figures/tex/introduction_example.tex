@@ -12,31 +12,31 @@
   rounded corners=7pt}
 ]
 \node[box=darkgray_x11] (raw) {
- \textbf{Raw $\Hh$: User--Agent conversation history}\\
+ \textbf{Raw $\Hh$: user--agent conversation history}\\
  Mar.\ 2: \emph{Ava arranged our 4-hour outdoor hike.}\\
  Mar.\ 9: \emph{Ben booked my 2-hour indoor pottery class.}\\
  Mar.\ 16: \emph{Cara arranged our 3-hour outdoor ride.}};
 \node[turn,below=0.22cm of raw] (turn1) {
- \textbf{User--Agent turn (Mar.\ 17).}
+ \textbf{user--agent turn (Mar.\ 17).}
  $Q_1$: \emph{Whom should I contact to repeat my March outdoor activities?}};
 \node[box=softblue,below=0.22cm of turn1] (facts) {
- \textbf{Agent--Memory exchange.}
+ \textbf{agent--memory exchange.}
  Query $q_1$ requests March activities, settings, and organizers.\\[2pt]
  \textbf{Retrieved memory $m_1$ from first-order $\Ff$:}\\
  Hike: outdoors, Ava;\quad Pottery: indoors, Ben;\\
  Ride: outdoors, Cara.\quad Durations are not yet needed.};
 \node[box=cadmiumgreen,below=0.28cm of facts] (use) {
- \textbf{Second-order $\Uu$: Agent--Memory experience.}\\
- After $A_1$, a complete use report credits all settings and Ava/Cara links.
- Ben's link was returned but unused; retain query execution cost.
+ \textbf{Second-order $\Uu$: agent--memory experience.}\\
+ After $A_1$, the agent reports using all settings and Ava/Cara links.
+ Ben's link was returned but unreported; retain query execution cost.
  These observations change later priorities and cost estimates.};
 \node[box=softorange,below=0.42cm of use] (next) {
  \textbf{Question $Q_2$ (Mar.\ 18):} \emph{Who organized my longest outdoor
  activity in March?}\\[3pt]
- \textcolor{softblue}{\textbf{Performance ($q_2$):}} verify March's
+ \textcolor{softblue}{\textbf{Accuracy ($q_2$):}} verify March's
  outdoor scope; acquire durations
  $4>3$; bind the winning hike to Ava.\\[3pt]
- \textcolor{softorange}{\textbf{Efficiency:}} reuse known settings
+ \textcolor{softorange}{\textbf{Cost:}} reuse known settings
  and organizers; budget work for the missing durations,
  not repeated judgments of every known fact.\\[3pt]
  \textbf{Answer $A_2$: Ava.} Durations enrich $\Ff$; their reported use
@@ -48,7 +48,7 @@
  node[midway,right,font=\scriptsize,text=cadmiumgreen,
   fill=white,inner sep=1pt] {Guide next query} (next.north);
 % The two interfaces yield different persistent histories. Completed
-% User--Agent sessions append to raw history; Agent--Memory operations
+% user--agent sessions append to raw history; agent--memory operations
 % update use and cost experience after each execution.
 \draw[feedback,darkgray_x11] (next.west) -- ++(-0.42cm,0)
  |- (raw.west);
@@ -59,18 +59,16 @@
 \node[rotate=90,font=\scriptsize\bfseries,text=cadmiumgreen]
  at ($(use.east)!0.5!(next.east)+(0.66cm,0)$) {New use + cost};
 \end{tikzpicture}
-\caption{Two histories evolve together. The gray loop appends completed
-User--Agent conversations to raw sessions. Query-driven facts enrich
-first-order memory. The green loop retains Agent--Memory use and cost
-experience in second-order memory to guide later queries.
-Illustrative example, not an evaluation trace.}
+\caption{Memory content and agent--memory experience across two queries.
+The gray loop retains completed conversations; the green loop retains
+use and cost observations for subsequent queries. Illustrative example.}
 \Description{Alice describes a hike organized by Ava, an indoor pottery
 class organized by Ben, and a ride organized by Cara. An earlier contact
 question acquires their settings and organizers, but not durations.
-The agent uses the settings and Ava/Cara links; Ben's link is unused.
+The agent reports using the settings and Ava/Cara links; Ben's link is unreported.
 A later longest-outdoor-activity question acquires durations, selects the hike,
 and returns Ava, while use experience guides priorities and budgets.
-A gray feedback loop appends each closed User--Agent conversation,
+A gray feedback loop appends each closed user--agent conversation,
 including the question and answer, to raw sessions. A green feedback
 loop returns the later query's validated reported use and cost to
 second-order memory, which then guides subsequent queries.}

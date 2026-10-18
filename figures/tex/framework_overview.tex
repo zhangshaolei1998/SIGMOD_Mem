@@ -4,16 +4,12 @@
 % Canonical editable source and its native PowerPoint publication export.
 % Re-export this exact PPTX after editing it; do not use an older final.pdf.
 \includegraphics[width=\textwidth]{figures/pptx/figure3-memory-system-reference1-v7.pdf}
-\caption{Architecture and execution on Alice's March activities.
-The top strip separates User--Agent questions and answers from
-Agent--Memory queries and retrieved memory. The left block shows three
-alternative evidence computations and their cost-aware execution;
-the right block shows the memory state they read and update. First-order
-facts supply evidence, while second-order experience guides access and
-execution effort. The retained state is shown after the March~18 turn:
-blue rows are newly verified durations, the organizer-use report is from
-March~17, and the closed March~18 answer is stored as dialogue, not source
-evidence. The examples use the verified three-activity March scope.}
+\caption{Memory organization and workload-aware query processing.
+The pipelines and executor read and update the three memory levels.
+The example uses Alice's verified three-activity March scope.
+The retained state is shown after March~18: blue rows are newly acquired
+durations, the use report is from March~17, and the stored answer remains
+dialogue with its original provenance.}
 \Description{A User, LLM Agent and MemCatalog exchange strip sits above
 three alternative pipelines: organizer lookup returns Ava; independent
 setting judgments produce the outdoor count two; duration comparison
@@ -25,6 +21,6 @@ cost records occupy the right column. First-order facts and second-order
 experience guide grounding within the selected pipeline and cost-aware
 execution. Black labels
 identify alternatives and memory levels; red labels distinguish the
-performance and efficiency techniques.}
+accuracy and cost techniques.}
 \label{fig:framework_overview}
 \end{figure*}

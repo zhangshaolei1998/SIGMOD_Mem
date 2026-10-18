@@ -86,22 +86,9 @@
 \newcommand{\red}{\textsc{Independent}\xspace}
 \newcommand{\comp}{\textsc{Dependent}\xspace}
 \DeclareMathOperator*{\argmin}{arg\,min}
-% Examples may break across columns; continuation headers keep the pieces
-% identifiable without pushing a long example to the next column wholesale.
-\def\memoryexamplelabel#1:#2\relax{#1}
-\newcommand{\memorycontinuedframe}[1]{%
-  \fboxrule=0.7pt\fboxsep=5pt
-  \fbox{\vbox{%
-    \hsize=\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax
-    \parindent=0pt\small
-    \noindent\textbf{\expandafter\memoryexamplelabel\memoryexampletitle:\relax
-      \space(continued)}\par\smallskip
-    #1}}}
+% Examples may continue across columns without repeating their titles.
 \newenvironment{memoryexample}[1]{%
-  \def\memoryexampletitle{#1}%
   \def\FrameCommand{\fboxrule=0.7pt\fboxsep=5pt\fbox}%
-  \let\MidFrameCommand\memorycontinuedframe
-  \let\LastFrameCommand\memorycontinuedframe
   \setlength{\OuterFrameSep}{6pt}%
   \par\begin{framed}\small\parindent=0pt
   \noindent\textbf{#1}\par\nobreak\smallskip

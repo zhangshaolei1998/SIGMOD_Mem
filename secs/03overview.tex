@@ -1,14 +1,16 @@
 %!TEX root = ../main.tex
-\section{Architecture}
+\section{Memory Organization}
 \label{sec:overview}
 
 \input{figures/tex/framework_overview}
 
-\sys{} separates User--Agent history from Agent--Memory experience.
-Query-induced first-order facts connect them: conversations supply
-evidence, and execution records how that evidence is provided and used.
+\sys{} links user--agent conversations with records of memory queries,
+returned evidence, reported use, and execution cost. Stable fact-version
+identifiers connect use reports and action records to the exact facts
+involved. Computed results retain links to their supporting facts.
+This shared state guides later evidence access and execution.
 
-\subsection{From Sessions to Facts to Use Experience}
+\subsection{Three-Level Memory Organization}
 \label{subsec:new-state}
 
 For each user, the memory state is
@@ -16,39 +18,56 @@ For each user, the memory state is
 \label{eq:new-state}
 \Mm=(\Hh,\Ff,\Uu).
 \end{equation}
-The progression $\Hh\rightarrow\Ff\rightarrow\Uu$ links conversations,
-facts, and fact-use experience, independently of execution order.
-$\Uu$ retains outcomes and costs even for empty results. All levels
-are isolated by user.
+The progression $\Hh\rightarrow\Ff\rightarrow\Uu$ links source records,
+derived values, and experience about using those values. It expresses
+their data dependencies; execution can read all three levels.
+All levels are isolated by user.
 
-\runin{Raw sessions: User--Agent history}
+\runin{Raw sessions: user--agent history}
 $\Hh=(s_1,\ldots,s_n)$ is an append-only sequence of closed,
 timestamped conversations, including questions $Q$, answers $A$, and
 speaker identities. Sessions remain available, including details that
 no previous query needed. Agent text retains its speaker identity:
 suggestions and generated claims are not independent user evidence.
-They require user confirmation or lineage to already grounded assertions;
+They require user confirmation or links to already supported assertions;
 storing an answer does not create new source support.
 
 \runin{First-order memory: what the agent knows about the user}
 $\Ff$ contains source-backed assertion records $f$, normally with a
 $(\mathrm{subject},\mathrm{predicate},\mathrm{object})$ payload.
-Each record has a stable fact-version ID, source spans, and temporal
-qualifiers; equal triples with different qualifiers remain distinct.
+Each record represents a \emph{fact version}: an assertion with particular
+temporal qualifiers, a stable ID, and source spans. Equal triples with
+different qualifiers remain distinct.
 Event identifiers connect facts about the same activity across sessions.
+A \emph{derivation} records a computed value's input fact-version IDs and
+scope checks. Reuse validates these inputs before repeating computation.
 Extraction is query-driven: an organizer query can acquire an event's
 organizer, while a later comparison acquires its duration from the same
 source. Facts accumulate as the workload reveals what is needed.
 
-\runin{Second-order memory: Agent--Memory experience}
+\runin{Second-order memory: agent--memory experience}
 $\Uu$ retains memory-query context, returned evidence, support outcomes,
 action costs, and validated credit for agent-reported fact use.
-It distinguishes exposure from reported consumption and stores both
-execution records and statistics derived from them. Repeated organizer
-requests teach the system which event links to prioritize and reuse.
-Observed action outcomes and costs inform subsequent execution decisions.
+Each query record contains $(q,E^r,E^u,\sigma,C(q))$: query context,
+returned fact-version IDs, optional validated reported-use IDs, support
+status, and execution cost. Action records reference the same query.
+Its evidence references identify the exact first-order
+fact versions exposed to the agent. Reported use of a derived result expands
+to its supporting facts, including evidence for excluding candidates.
+An unreported use remains unobserved. Execution outcomes and costs are
+retained even for empty results or absent use reports.
+These records maintain two kinds of statistics: contextual fact-use
+counts for evidence access and estimates of evidence resolution and cost for
+execution. Their update rules are defined in
+Sections~\ref{subsec:new-evolution} and~\ref{subsec:new-experience},
+and Section~\ref{sec:executor}.
 
-\begin{memoryexample}{Example 1: from a conversation to second-order experience}
+Raw sessions preserve unmaterialized details; facts make verified values
+reusable. Experience changes their priority and the predicted cost of
+missing evidence, even when $\Ff$ is unchanged. Source links continue
+to determine evidence eligibility.
+
+\begin{memoryexample}{Example 1: fact acquisition and use attribution}
 \textbf{1. Raw conversations.} Alice says on March 2,
 \emph{Ava arranged our 4-hour outdoor hike at Pine Trail.}
 On March 9, \emph{Ben booked my 2-hour indoor pottery class.}
@@ -74,10 +93,10 @@ unneeded durations remain in raw sessions.
 \smallskip
 \textbf{3. Retrieval differs from use.} The agent answers,
 \emph{Ava for the hike; Cara for the ride.}
-A complete use report credits all three settings, including pottery's
-exclusion, and the Ava/Cara links. Ben's organizer was returned but unused.
-Second-order memory records these IDs, context, and cost without
-discarding unused facts.
+The agent reports all three settings, including pottery's exclusion,
+and the Ava/Cara links as used, and declares the report complete.
+Ben's link was returned but unreported. Second-order memory records
+both sets of IDs, context, and cost; all facts remain available.
 
 \smallskip
 \textbf{4. All three levels evolve.} The March 18 question about the
@@ -87,13 +106,13 @@ Durations enrich $\Ff$; their use and acquisition cost enrich $\Uu$.
 The completed question/answer session is appended to $\Hh$ when it closes.
 \end{memoryexample}
 
-\subsection{How Content and Operations Evolve}
+\subsection{Version-Linked Experience Maintenance}
 \label{subsec:new-evolution}
 
 When $q$ arrives, its source snapshot is fixed and required evidence is
 checked against $\Ff$.
 Missing properties, links, versions, or population coverage identify
-which source regions must be examined. Newly acquired facts enrich
+which source regions should be examined. Newly acquired facts enrich
 $\Ff$ after verification. Acquisition reconciles identities, normalizes
 dates and units, and retains temporal versions. Relative dates use the source
 session's timestamp. Multiple valid objects can coexist; an explicit
@@ -101,33 +120,35 @@ update to a single-valued property creates a new version and preserves
 its history.
 
 After execution, $\Uu$ records $q$'s context, returned fact-version IDs
-$E^r$, support diagnostics, and costs. $E^r$ includes the facts exposed
-in $m$'s evidence bundle, not every fact inspected internally.
-A complete agent use report identifies $q$ and its consumed fact or
-derived-result IDs.
-For a consumed result, memory expands its derivation to the supporting
+$E^r$, evidence-check outcomes, and costs. $E^r$ identifies the facts
+exposed to the agent in $m$'s evidence bundle.
+A use report identifies $q$, names the fact or derived-result IDs the
+agent reports using, and declares whether the report covers all memory
+use for that query. For a reported result, memory expands its derivation to the supporting
 facts, including negative evidence that excludes a candidate from a
 count. Every such supporting fact is included in $E^r$.
-Membership, lineage, and source/version checks against $q$'s snapshot validate the resulting
+Membership, derivation, and source/version checks against $q$'s snapshot validate the resulting
 $E^u\subseteq E^r$;
 each fact receives at most one use credit per query, with idempotent
-updates by query and fact-version ID. Returning a result
-establishes exposure; use requires a validated report. Credit records
-reported consumption without attributing answer correctness to a fact.
-Incomplete or missing reports leave
-use unobserved; execution records are retained independently.
+updates by query and fact-version ID. Validation establishes the reported
+references and their source support; completeness is the agent's
+declaration. The resulting credit measures reported consumption.
+Only validated reports declared complete update the exposure/use
+statistics. Partial or missing reports leave use unobserved; execution
+records are retained independently.
 
-A closed User--Agent session is appended to $\Hh$. Later queries
+The attribution unit is a fact version because an update can change a
+value's usefulness while leaving its entity and predicate unchanged.
+Derivation expansion recovers the filtering and exclusion evidence behind
+a reported result, even when the answer names only surviving candidates.
+Separate exposure and use counts then distinguish facts returned to the
+agent from facts credited by its report. These update semantics
+connect the three levels and provide the observations consumed by
+subsequent query decisions.
+
+A closed user--agent session is appended to $\Hh$. Later queries
 revalidate cached scope and version checks affected by the new session;
 old assertions and their provenance are not erased.
 
-Figure~\ref{fig:framework_overview} connects the hierarchy to execution.
-First-order facts supply source-backed values and identify missing evidence;
-second-order experience supplies use priorities and action-cost estimates.
-Both inputs support query planning and execution control. For performance, they guide
-grounding and reuse within the selected pipeline
-(Section~\ref{sec:framework}). For efficiency, they guide the amount
-and location of additional execution
-(Section~\ref{sec:executor}). The operations evolve through their
-priorities, reuse decisions, and budgets; source evidence continues to
-determine what a supported result can assert.
+Both first-order facts and second-order memory guide evidence access
+(Section~\ref{sec:framework}) and execution (Section~\ref{sec:executor}).

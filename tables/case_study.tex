@@ -2,17 +2,18 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Independent-composition trace: implicit counting and unresolved predicates
-      contrast with explicit candidate evaluation and combination.}
+    \caption{Illustrative evaluation of Alice's March outdoor count.
+    The closed scope contains the three activities in Example~1.}
     \label{tbl:casestudy}
-    \begin{tabular}{@{}llcc@{}}
+    \begin{tabular}{@{}lll@{}}
         \toprule
-        \textbf{System} & \textbf{Evidence processing} & $\boldsymbol{C(q)}$ & \textbf{Answer} \\
+        \textbf{Candidate} & \textbf{Verified setting} & \textbf{Contribution} \\
         \midrule
-        Full-Context   & count left implicit & 1 & \textcolor{dropred}{5} \\
-        Zep~\cite{zep} & predicate unresolved & 1 & \textcolor{dropred}{4} \\
+        Hike & Outdoors & 1 \\
+        Pottery & Indoors & 0 \\
+        Ride & Outdoors & 1 \\
         \midrule
-        \textbf{\sys{}} & explicit candidate evaluation & 2 & \textcolor{cadmiumgreen}{\textbf{3}} \\
+        \multicolumn{2}{@{}l}{\textbf{Supported count}} & \textbf{2} \\
         \bottomrule
     \end{tabular}
 \end{table}

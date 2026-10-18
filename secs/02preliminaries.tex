@@ -14,44 +14,44 @@ the agent. The agent exchanges a \emph{memory query} $q$ and
 \xrightarrow{A}\mathrm{User}.
 \end{equation}
 A question can induce several memory queries; its conversation history
-and each query's second-order experience are recorded separately.
-The agent uses $m$ to generate $A$. The memory support guarantee applies
+and records of each query's execution and reported use are kept separately.
+The agent uses $m$ to generate $A$. The support semantics apply
 to $m$; claims the agent adds to $A$ require separate justification.
-The query/evidence
-terminology is consistent with memory retrieval work~\cite{mem0,memr3}.
 
 A memory query specifies an information need, an entity or population
 scope, and a temporal scope. Execution uses the source snapshot available
 when $q$ arrives; newly closed sessions become available to later queries.
-Current and historical questions can therefore select different
-versions of the same fact. We model finite requests for facts or
-computations over the recorded user history and evaluate them against
-the source snapshot fixed at query arrival.
+Current and historical questions can select different versions.
+We consider finite fact requests and computations over that snapshot.
 
 Retrieved memory is $m=(v,E,\sigma)$,
 where $v$ is a value, fact collection, justified partial bound, or
 $\bot$ when no value can be established.
 $E$ is a finite evidence bundle of source-backed fact versions and
-scope, version, and binding checks, including unresolved checks.
+evidence checks. A check tests a condition required for the result, such
+as source support, temporal version, population coverage, or request dependency.
 $\sigma$ is
 \texttt{supported}, \texttt{partial}, or \texttt{unknown}. A count needs
 evidence that covers its requested population; a dependent result needs
 evidence for each required link. Supported means all required checks
-are discharged; partial means some evidence is established but an
-obligation remains; unknown means no source support for the result is established.
+are discharged; partial means some evidence is established but a
+required check remains unresolved; unknown means no source support for the result is established.
 A verified empty scope establishes supported absence. An unresolved
 check leaves its predicate unknown.
-These states are defined by the evidence obligations of a validated
+These states are defined by the required evidence checks of a validated
 plan against its source snapshot.
 
-Experience is retained per user: later queries can benefit from earlier
-fact use and execution outcomes without mixing different users' states.
+A user's workload is the sequence of memory queries received over time.
+Population coverage means that every candidate in a declared scope has
+been enumerated; a binding passes one request's result to another's input.
+Experience is retained per user, so later queries benefit from earlier
+fact use and execution outcomes without mixing users' states.
 Table~\ref{tab:new-notation} lists the core symbols; each operational
 quantity is defined where it is used.
 
 \begin{table}[t]
 \centering\small
-\caption{Core notation for the two interfaces and the evolving memory hierarchy.}
+\caption{Core notation.}
 \label{tab:new-notation}
 \begin{tabular}{@{}l p{0.70\columnwidth}@{}}
 \toprule
@@ -59,14 +59,14 @@ Symbol & Meaning\\
 \midrule
 $Q,A$ & User question $Q$; agent answer $A$\\
 $q,m$ & Memory query $q$; retrieved memory $m$\\
-$\Hh,\Ff,\Uu$ & User--Agent sessions $\Hh$; query-induced facts $\Ff$; Agent--Memory experience $\Uu$\\
+$\Hh,\Ff,\Uu$ & user--agent sessions $\Hh$; query-induced facts $\Ff$; agent--memory experience $\Uu$\\
 $\Mm$ & User's memory state $\Mm=(\Hh,\Ff,\Uu)$\\
 $f$ & A first-order fact $f$, with source and time\\
 $P$ & Query plan $P=(R,D,g)$: requests $R$, dependencies $D$, result operation $g$\\
 $E^r,E^u$ & Returned fact-version IDs $E^r$; validated reported-use IDs $E^u\subseteq E^r$\\
 $\ell,C$ & Unresolved-check fraction $\ell$; memory-query LLM-call cost $C(q)$\\
 $K(q)$ & Current additional-call reservation $K(q)$ for query $q$\\
-$\lambda$ & Diagnostic--cost tradeoff weight $\lambda$\\
+$\lambda$ & Evidence-resolution/call-cost tradeoff weight $\lambda$\\
 \bottomrule
 \end{tabular}
 \end{table}
