@@ -10,7 +10,7 @@ identifiers connect use reports and action records to the exact facts
 involved. Computed results retain links to their supporting facts.
 This shared state guides later evidence access and execution.
 
-\subsection{Three-Level Memory Organization}
+\subsection{Three-Level Memory Architecture}
 \label{subsec:new-state}
 
 For each user, the memory state is
@@ -19,11 +19,11 @@ For each user, the memory state is
 \Mm=(\Hh,\Ff,\Uu).
 \end{equation}
 The progression $\Hh\rightarrow\Ff\rightarrow\Uu$ links source records,
-derived values, and experience about using those values. It expresses
+extracted facts, and memory query history. It expresses
 their data dependencies; execution can read all three levels.
 All levels are isolated by user.
 
-\runin{Raw sessions: user--agent history}
+\runin{Raw memory: conversation history}
 $\Hh=(s_1,\ldots,s_n)$ is an append-only sequence of closed,
 timestamped conversations, including questions $Q$, answers $A$, and
 speaker identities. Sessions remain available, including details that
@@ -32,7 +32,7 @@ suggestions and generated claims are not independent user evidence.
 They require user confirmation or links to already supported assertions;
 storing an answer does not create new source support.
 
-\runin{First-order memory: what the agent knows about the user}
+\runin{First-order memory: extracted facts}
 $\Ff$ contains source-backed assertion records $f$, normally with a
 $(\mathrm{subject},\mathrm{predicate},\mathrm{object})$ payload.
 Each record represents a \emph{fact version}: an assertion with particular
@@ -45,8 +45,8 @@ Extraction is query-driven: an organizer query can acquire an event's
 organizer, while a later comparison acquires its duration from the same
 source. Facts accumulate as the workload reveals what is needed.
 
-\runin{Second-order memory: agent--memory experience}
-$\Uu$ retains memory-query context, returned evidence, support outcomes,
+\runin{Second-order memory: memory query history}
+$\Uu$ is the memory query history. It retains query context, returned evidence, support outcomes,
 action costs, and validated credit for agent-reported fact use.
 Each query record contains $(q,E^r,E^u,\sigma,C(q))$: query context,
 returned fact-version IDs, optional validated reported-use IDs, support
@@ -63,7 +63,7 @@ Sections~\ref{subsec:new-evolution} and~\ref{subsec:new-experience},
 and Section~\ref{sec:executor}.
 
 Raw sessions preserve unmaterialized details; facts make verified values
-reusable. Experience changes their priority and the predicted cost of
+reusable. Historical execution feedback changes their priority and the predicted cost of
 missing evidence, even when $\Ff$ is unchanged. Source links continue
 to determine evidence eligibility.
 
@@ -106,7 +106,7 @@ Durations enrich $\Ff$; their use and acquisition cost enrich $\Uu$.
 The completed question/answer session is appended to $\Hh$ when it closes.
 \end{memoryexample}
 
-\subsection{Version-Linked Experience Maintenance}
+\subsection{Memory-Use Attribution}
 \label{subsec:new-evolution}
 
 When $q$ arrives, its source snapshot is fixed and required evidence is

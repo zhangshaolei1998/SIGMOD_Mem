@@ -2,8 +2,8 @@
 \section{Experiments}
 \label{sec:experiments}
 
-We evaluate memory organization with source-linked agent--memory experience and
-workload-aware queries for accuracy and cost. We examine overall
+We evaluate the three-level memory architecture, query planning, and
+cost-aware execution. We examine overall
 accuracy, component contributions, adaptation across queries, and
 history-length scaling, followed by an end-to-end example.
 
@@ -23,8 +23,7 @@ profiles~\cite{dynamicmem}.
 We use \membench{}~\cite{membench} to study single-fact retrieval,
 independent composition, dependent composition, and cost-aware
 execution. Together, these benchmarks evaluate the memory hierarchy and its
-accumulation of user-specific evidence and second-order agent--memory
-experience over time.
+accumulation of user-specific facts and memory query history over time.
 
 \stitle{Baselines.}
 The seven baselines are Full-Context,
@@ -79,7 +78,7 @@ evidence processing and plan compilation behind these aggregate scores.
 On \evomem{}, \sys{} gains $2.5$ points over the strongest baseline;
 on \dynamicmem{}, both systems score $34.9$.
 Section~\ref{subsec:exp6} examines query positions on \evomem{};
-Section~\ref{subsec:exp5} tests second-order experience with unchanged
+Section~\ref{subsec:exp5} tests second-order memory with unchanged
 aggregate $\sum_q C(q)$.
 
 \subsection{Accuracy Across Language Models}
@@ -134,6 +133,11 @@ unresolved, the same closed scope yields $[2,3]$. This example illustrates
 the pipeline's support requirements; the component comparisons in
 Section~\ref{subsec:exp5} evaluate its effect on answer scores.
 
+These cases distinguish missing evidence from incorrect combination.
+A count needs both a covered scope and supported settings; an organizer
+selected through a comparison additionally needs the winning activity's
+identity to survive the lookup.
+
 \input{tables/cost_breakdown}
 \input{figures/tex/pareto}
 
@@ -170,6 +174,11 @@ summarize realized cost; action selection follows the current evidence
 state through Eq.~\eqref{eq:short}.
 
 Figure~\ref{fig:pareto} summarizes the accuracy--cost tradeoff under $C(q)$.
+The two reductions act at different points in execution. Allocation limits
+which unresolved checks receive resources; refinement revisits that
+choice as evidence arrives. Their combined benefit depends on retaining
+completed checks, so an additional call targets remaining uncertainty
+rather than repeating an already supported decision.
 
 \input{tables/ablation}
 
@@ -177,7 +186,7 @@ Figure~\ref{fig:pareto} summarizes the accuracy--cost tradeoff under $C(q)$.
 \label{subsec:exp5}
 
 Table~\ref{tbl:ablation} compares configurations of the memory
-hierarchy, query-specific pipelines, second-order agent--memory experience,
+hierarchy, query-specific pipelines, second-order memory,
 and cost-aware execution.
 
 \stitle{Memory organization and query computation.}
@@ -192,15 +201,15 @@ facts supply reusable operands; the selected pipeline makes their
 composition explicit. Removing either increases repeated grounding or
 leaves evidence combination to generation. Raw-session grounding also
 preserves access to details that no earlier query materialized.
-\stitle{Second-order experience at unchanged aggregate cost.}
-Removing second-order experience loses $0.7$ points on \membench{} and
+\stitle{Memory query history at unchanged aggregate cost.}
+Removing second-order memory loses $0.7$ points on \membench{} and
 $1.7$ on \lmev{}, while $\sum_q C(q)$ remains $444$ and $602$.
-Removing experience-guided priority loses $0.3$ and $1.0$, again without changing
-those totals. The whole-experience ablation removes the history used by
+Removing history-guided priority loses $0.3$ and $1.0$, again without changing
+those totals. The whole-history ablation removes the records used by
 both access priorities and action estimates; the priority ablation
 targets the access score in Eq.~\eqref{eq:pi}.
 
-The score differences associate interaction experience with better
+The score differences associate historical execution feedback with better
 answers at unchanged aggregate expenditure. The two ablations test
 different uses of that state: evidence ordering and the combined
 access/execution policy.
@@ -222,7 +231,7 @@ Table~\ref{tbl:second_order_learning} groups \evomem{} answer scores by
 position in each user's query history. \sys{} rises from $22.2$ to
 $27.8$ across the four buckets, while the strongest baseline remains
 nearly flat. These scores describe the full system as both facts and
-agent--memory experience accumulate. The separate experience ablations
+memory query history accumulate. The separate history ablations
 in Section~\ref{subsec:exp5} complement this trend by comparing answer
 scores with and without historical feedback at unchanged aggregate calls.
 
@@ -286,7 +295,7 @@ durations and records the acquisition outcome and cost. Repeating that
 comparison can reuse its complete inputs with $K(q)=0$ additional calls.
 The recorded action conditions also inform the cost of later acquisitions.
 
-\stitle{Experience changes decisions at fixed content.}
+\stitle{Memory query history changes decisions at fixed content.}
 With Turn~1's fact values fixed, the returned/used distinction still
 changes access. The unit priors in Section~\ref{subsec:new-experience} assign
 matched-contact use propensities $2/3$ to Ava/Cara links and $1/3$ to Ben's.
@@ -295,11 +304,18 @@ determine eligibility; the learned values order equally relevant facts.
 Recorded outcomes inform the predicted benefit and cost of later
 missing-duration work; valid cached durations remove that work.
 
+The query history distinguishes two reasons for an item to be absent
+from the answer. Pottery's setting supports exclusion; Ben's organizer
+link was returned but not reported as used. Both are absent from the
+final contact names, but only the setting receives use credit.
+Derivation links preserve this distinction when an agent reports the
+combined result rather than listing every supporting fact.
+
 \stitle{A changed population changes the remaining work.}
 Turn~3 adds one outing to the March scope. The three earlier setting
 judgments remain reusable, while the new outing's actual setting requires
 verification. The follow-up establishes that it occurred indoors, giving
 $1+0+1+0=2$; without that evidence, the result remains $[2,3]$.
-The cache removes completed checks; second-order experience guides the
+The cache removes completed checks; second-order memory guides the
 new setting acquisition. Population coverage still determines whether
 the count can be exact.

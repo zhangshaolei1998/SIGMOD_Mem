@@ -40,29 +40,13 @@
 \renewcommand{\shortauthors}{Anonymous Author(s)}
 
 \begin{abstract}
-LLM agents use persistent memory to recover user information from past
-conversations. Existing systems manage stored content but provide limited
-support for learning from agent--memory interactions: memory queries,
-returned facts, the agent's reported use, and execution outcomes and costs.
-We present \sys{}, a self-evolving memory management system that uses
-these records to adapt later queries. The first challenge is attributing
-reported use when an answer combines facts that can change over time.
-A three-level architecture links raw conversations; first-order memory,
-containing facts extracted for queries; and second-order memory, containing
-records of their retrieval, reported use, and execution. Version identifiers
-and links from computed results to supporting facts keep this attribution
-consistent. The second challenge is deciding where more computation is
-useful when queries require different facts and prior work can be reused.
-Workload-aware memory queries adapt processing to the current request and
-historical use records. Query-specific pipelines retrieve one fact, combine
-independent facts, or resolve requests that depend on earlier results.
-Cost-aware execution reuses verified results and chooses further acquisition
-or verification by its predicted reduction in missing evidence and LLM-call
-cost, updating its choices after each outcome.
-Across eight long-term memory benchmarks, \sys{} matches or improves the
-strongest evaluated prior system on each benchmark, with an average gain
-of $2.6$ points. On \membench{}, it achieves higher accuracy with $50.7\%$
-fewer memory-side LLM calls than a fixed three-call budget.
+LLM agents rely on persistent memory to retrieve information from past conversations. Existing memory systems primarily manage stored facts and optimize retrieval, but provide limited support for learning from previous memory query executions.
+We present \sys{}, a self-evolving memory management system that continually updates stored information and improves query processing using historical execution feedback.
+Realizing this design raises two technical challenges.
+First, memory organization should capture not only stored facts but also how the system retrieves and uses them across queries.
+\sys introduces a three-level memory architecture that organizes conversation history, extracted facts, and memory query history. It tracks fact versions and supporting evidence to maintain accurate memory-use attribution and provide reusable execution feedback.
+Second, query processing should accommodate different evidence requirements while balancing retrieval effectiveness and execution cost. \sys combines query planning with cost-aware execution to handle single-fact retrieval, independent composition, and dependent composition. It exploits current evidence and historical execution feedback to reuse verified results and adapt execution efforts to queries.
+Across eight long-term memory benchmarks, \sys matches or outperforms the strongest evaluated prior system on every benchmark, with an average gain of 2.6 points. On \membench{}, it achieves higher accuracy with 50.7\% fewer memory-side LLM calls than a fixed three-call budget.
 \end{abstract}
 
 %% CCS concepts. Generated from https://dl.acm.org/ccs.
@@ -98,8 +82,8 @@ fewer memory-side LLM calls than a fixed three-call budget.
 \ccsdesc[100]{Computing methodologies~Multi-agent systems}
 \fi
 
-\keywords{Agent memory management, self-evolving memory, second-order memory,
-  workload-aware queries, cost-aware execution}
+\keywords{Agent memory management, self-evolving memory, memory query history,
+  query planning, cost-aware execution}
 
 \maketitle
 

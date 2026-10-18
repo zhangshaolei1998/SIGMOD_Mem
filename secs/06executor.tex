@@ -1,12 +1,12 @@
 %!TEX root = ../main.tex
-\section{Cost-Aware Query Execution}
+\section{Cost-Aware Execution}
 \label{sec:executor}
 
 The pipeline fixes the result's evidence requirements. Execution selects
 unresolved work and decides when to stop. A value can unlock a lookup;
 a discovered event can add judgments; a completed check can make another
 action redundant. \sys{} therefore reselects actions after each outcome,
-using second-order experience to predict evidence benefit and cost.
+using historical execution feedback to predict evidence benefit and cost.
 Predicted mean cost ranks work; maximum reservations enforce the call
 cap. Adaptive sampling varies inference effort across
 questions~\cite{adaptiveconsistency,escsc}; here selection concerns the
@@ -103,7 +103,7 @@ set contains instantiated ready actions and sequence templates; newly
 discovered candidates trigger instantiation again.
 
 First-order evidence identifies cache hits and unresolved checks;
-second-order experience supplies the matched reductions and costs.
+memory query history supplies the matched reductions and costs.
 From dependency-ready actions, the executor constructs a worklist
 $\mathcal A_+(q)$ by scanning candidates in descending predicted net benefit
 $\widehat{\Delta\ell}(a)-\lambda\widehat c(a)$.
