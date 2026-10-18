@@ -16,8 +16,8 @@ MemLens organizes atomic units and summaries in a provenance-linked
 tree. Shapley-style marginal contributions guide retention and
 reranking~\cite{memlens}.
 
-\sys{} addresses the management of observed agent--memory interactions.
-Its second-order records associate returned and reported-use fact
+\sys{} jointly manages conversation history and memory query history.
+Its second-order memory associates returned and reported-use fact
 versions with derivations, action outcomes, and costs. This state guides
 both access and execution (Table~\ref{tbl:positioning}).
 
@@ -56,10 +56,10 @@ resolution against cost and preserves verified subresults across queries.
 \section{Conclusion}
 \label{sec:conclusion}
 
-\sys{} links raw sessions, source-backed facts, and agent--memory
-experience in a self-evolving memory management system. Fact versions
+\sys{} links conversation history, extracted facts, and memory query
+history in a self-evolving memory management system. Fact versions
 and derivations connect reported use to reusable evidence.
-Workload-aware queries enforce coverage and dependencies; cost-aware
+Query plans encode coverage and dependency requirements; cost-aware
 execution reuses verified results and selects remaining work using
 historical outcomes and costs. Across eight benchmarks, it improves the
 strongest evaluated prior system by $2.6$ points on average. On

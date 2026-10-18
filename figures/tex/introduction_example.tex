@@ -26,7 +26,7 @@
  Hike: outdoors, Ava;\quad Pottery: indoors, Ben;\\
  Ride: outdoors, Cara.\quad Durations are not yet needed.};
 \node[box=cadmiumgreen,below=0.28cm of facts] (use) {
- \textbf{Second-order $\Uu$: agent--memory experience.}\\
+ \textbf{Second-order $\Uu$: memory query history.}\\
  After $A_1$, the agent reports using all settings and Ava/Cara links.
  Ben's link was returned but unreported; retain query execution cost.
  These observations change later priorities and cost estimates.};
@@ -59,7 +59,7 @@
 \node[rotate=90,font=\scriptsize\bfseries,text=cadmiumgreen]
  at ($(use.east)!0.5!(next.east)+(0.66cm,0)$) {New use + cost};
 \end{tikzpicture}
-\caption{Memory content and agent--memory experience across two queries.
+\caption{Conversation history and memory query history across two queries.
 The gray loop retains completed conversations; the green loop retains
 use and cost observations for subsequent queries. Illustrative example.}
 \Description{Alice describes a hike organized by Ava, an indoor pottery
@@ -67,7 +67,7 @@ class organized by Ben, and a ride organized by Cara. An earlier contact
 question acquires their settings and organizers, but not durations.
 The agent reports using the settings and Ava/Cara links; Ben's link is unreported.
 A later longest-outdoor-activity question acquires durations, selects the hike,
-and returns Ava, while use experience guides priorities and budgets.
+and returns Ava, while execution feedback guides priorities and budgets.
 A gray feedback loop appends each closed user--agent conversation,
 including the question and answer, to raw sessions. A green feedback
 loop returns the later query's validated reported use and cost to

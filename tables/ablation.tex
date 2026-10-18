@@ -2,7 +2,7 @@
 \begin{table}[t]
     \centering
     \small
-    \caption{Ablations of memory organization and workload-aware query processing.}
+    \caption{Ablations of memory organization and query processing.}
     \label{tbl:ablation}
     \begin{tabular}{@{}lcccc@{}}
         \toprule
@@ -14,15 +14,15 @@
         \midrule
         \textbf{\sys{}}               & \best{92.8} & \best{444} & \best{10.3} & \best{602} \\
         \addlinespace[2pt]
-        \tblgroup{5}{Memory hierarchy and query-specific pipelines} \\
+        \tblgroup{5}{Memory organization and query planning} \\
         w/o query-plan classification & 89.1 & 900 & 8.8 & 903 \\
         w/o composition pipelines     & 87.9 & 900 & 8.3 & 903 \\
         w/o first-order facts         & 86.7 & 900 & 7.6 & 903 \\
         w/o raw-session grounding     & 92.8 & 444 & 10.1 & 651 \\
         \addlinespace[2pt]
-        \tblgroup{5}{Second-order agent--memory experience} \\
-        w/o second-order experience   & 92.1 & 444 & 8.6 & 602 \\
-        w/o experience-guided priority & 92.5 & 444 & 9.3 & 602 \\
+        \tblgroup{5}{Second-order memory} \\
+        w/o second-order memory   & 92.1 & 444 & 8.6 & 602 \\
+        w/o history-guided priority & 92.5 & 444 & 9.3 & 602 \\
         \addlinespace[2pt]
         \tblgroup{5}{Cost-aware execution} \\
         w/o cost-aware allocation      & 92.5 & 756 & 10.3 & 903 \\

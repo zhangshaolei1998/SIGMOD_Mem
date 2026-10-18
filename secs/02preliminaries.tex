@@ -14,7 +14,8 @@ the agent. The agent exchanges a \emph{memory query} $q$ and
 \xrightarrow{A}\mathrm{User}.
 \end{equation}
 A question can induce several memory queries; its conversation history
-and records of each query's execution and reported use are kept separately.
+and memory query history are kept separately. The latter records queries,
+returned facts or results, reported use, and execution outcomes and costs.
 The agent uses $m$ to generate $A$. The support semantics apply
 to $m$; claims the agent adds to $A$ require separate justification.
 
@@ -44,7 +45,7 @@ plan against its source snapshot.
 A user's workload is the sequence of memory queries received over time.
 Population coverage means that every candidate in a declared scope has
 been enumerated; a binding passes one request's result to another's input.
-Experience is retained per user, so later queries benefit from earlier
+Memory query history is retained per user, so later queries benefit from earlier
 fact use and execution outcomes without mixing users' states.
 Table~\ref{tab:new-notation} lists the core symbols; each operational
 quantity is defined where it is used.
@@ -59,7 +60,7 @@ Symbol & Meaning\\
 \midrule
 $Q,A$ & User question $Q$; agent answer $A$\\
 $q,m$ & Memory query $q$; retrieved memory $m$\\
-$\Hh,\Ff,\Uu$ & user--agent sessions $\Hh$; query-induced facts $\Ff$; agent--memory experience $\Uu$\\
+$\Hh,\Ff,\Uu$ & Conversation history $\Hh$; extracted facts $\Ff$; memory query history $\Uu$\\
 $\Mm$ & User's memory state $\Mm=(\Hh,\Ff,\Uu)$\\
 $f$ & A first-order fact $f$, with source and time\\
 $P$ & Query plan $P=(R,D,g)$: requests $R$, dependencies $D$, result operation $g$\\
