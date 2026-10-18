@@ -4,137 +4,189 @@
 
 \input{figures/tex/introduction_example}
 
-LLM agents increasingly interact with users across many sessions, using
-past preferences and experiences to answer questions and maintain
-continuity~\cite{memgpt,locomo,longmemeval}.
-Memory is the persistent data underlying these interactions.
-User--agent interactions are the questions and answers in a conversation.
-Agent--memory interactions comprise memory queries, returned facts or
-results, the agent's reports of using them, and execution outcomes and costs.
-As a user's history grows, memory management should reconcile updates,
-combine facts across sessions, and decide which versions to serve and how
-much computation a query needs. These are data management decisions about
-stored information and the work required to use it.
+%LLM agents increasingly interact with users across many sessions, using past preferences and experiences to answer questions and maintain continuity~\cite{memgpt,locomo,longmemeval}.
+%Memory is the persistent data underlying these interactions.
+%User--agent interactions are the questions and answers in a conversation.
+%Agent--memory interactions comprise memory queries, returned facts or
+%results, the agent's reports of using them, and execution outcomes and costs.
+%As a user's history grows, memory management should reconcile updates,
+%combine facts across sessions, and decide which versions to serve and how
+%much computation a query needs. These are data management decisions about
+%stored information and the work required to use it.
 
-Both the AI and database communities have begun to address this problem.
-In AI, MemGPT manages context tiers~\cite{memgpt}, Mem0 extracts and
-updates facts~\cite{mem0}, and Zep and A-MEM organize temporal relations
-and linked notes~\cite{zep,agenticmem}. RMM, MemRL, and Live-Evo learn
-retrieval priorities or experience utilities from
-feedback~\cite{rmm,memrl,liveevo}; MemR$^3$ adjusts retrieval through
-reflective control~\cite{memr3}.
-In the database community, VikingMem manages events and entities through
-selective extraction, state updates, and temporal
-consolidation~\cite{vikingmem}. MemLens estimates memory units' marginal
-contributions to response quality and uses these values for retention and
-retrieval~\cite{memlens}.
+LLM agents increasingly interact with users across multiple sessions, relying on past preferences and experiences to provide context-aware responses~\cite{memgpt,locomo,longmemeval}.
+\emph{Memory} is the persistent data underlying these interactions, which retains information from past interactions and serves queries issued by the agent.
+As interaction histories grow, effective memory management requires organizing and maintaining stored information while efficiently processing memory queries from the agent.
+
+%Both the AI and database communities have begun to address this problem. In AI community, MemGPT manages context tiers~\cite{memgpt}, Mem0 extracts and updates facts~\cite{mem0}, and Zep and A-MEM organize temporal relations and linked notes~\cite{zep,agenticmem}. RMM, MemRL, and Live-Evo learn retrieval priorities or experience utilities from feedback~\cite{rmm,memrl,liveevo}; MemR$^3$ adjusts retrieval through reflective control~\cite{memr3}.
+%In the database community, VikingMem manages events and entities through
+%selective extraction, state updates, and temporal
+%consolidation~\cite{vikingmem}. MemLens estimates %memory units' marginal
+%contributions to response quality and uses these values for retention and
+%retrieval~\cite{memlens}.
+
+Both the AI and database communities have made progress in \emph{memory organization} and \emph{query processing} for LLM agents.
+In the AI community, MemGPT manages context hierarchies~\cite{memgpt}, Mem0 extracts and updates facts~\cite{mem0}, and Zep and A-MEM organize temporal relationships and linked notes~\cite{zep,agenticmem}. RMM, MemRL, and Live-Evo learn retrieval priorities or experience utilities from feedback~\cite{rmm,memrl,liveevo}, while MemR$^3$ adapts retrieval through reflective control~\cite{memr3}.
+In the database community, VikingMem manages events and entities through selective extraction, state updates, and temporal consolidation~\cite{vikingmem}. MemLens estimates the marginal contribution of memory units to response quality and uses these estimates for retention and retrieval~\cite{memlens}.
 
 \input{tables/system_positioning}
 
 \runin{Limitations}
-Table~\ref{tbl:positioning} separates what a system stores from how it
-uses that state. Content maintenance and feedback-guided access are
-well studied; combining memory-use records with query composition and
-execution decisions remains a gap. Consider Alice's March
-activities in Figure~\ref{fig:motivating}: a hike organized by Ava, a
-pottery class organized by Ben, and a ride organized by Cara. For
-\emph{Whom should I contact to repeat my March outdoor activities?},
-memory returns three settings and three organizer links. A supported
-response needs all settings to distinguish outdoor from indoor activities,
-but only the Ava/Cara links. The agent reports which returned evidence it
-used. The conversation records the answer; the fact collection
-records the activities. Neither state alone identifies the evidence
-returned but unreported, the indoor setting credited for exclusion, or the cost
-of obtaining these facts. A management policy that sees only content or
-a relevance score loses this distinction across queries.
+Despite these advances, existing memory systems provide \emph{limited support for continually improving memory management based on previous query executions}.
+As summarized in Table~\ref{tbl:positioning}, this limitation manifests in two aspects.
 
-The same gap affects execution. An organizer lookup needs one supported
-fact, an outdoor count needs a covered population and setting judgments,
-and the longest-outdoor-activity organizer needs durations followed by a
-winner-to-organizer binding. A predefined retrieval path leaves these
-computations to answer generation. A predefined repetition budget also
-ignores whether the relevant facts were already verified. Without a
-record connecting previous evidence use and acquisition outcomes to
-the current query, execution can repeat completed work while leaving a
-missing value or binding unresolved. Learning a retrieval score alone
-does not specify how to complete these computations or where another
-LLM call is useful.
+First, \emph{memory organization} primarily focuses on user knowledge without systematically retaining memory-use experience.
+Consider Alice's March activities in Figure~\ref{fig:motivating}: a hike organized by Ava, a pottery class organized by Ben, and a ride organized by Cara.
+For \emph{Whom should I contact to repeat my March outdoor activities?}, memory retrieves whether each activity was indoor or outdoor,
+along with its organizer. The agent identifies the hike and ride as outdoor activities and returns Ava and Cara, excluding the indoor pottery class. However, storing these facts alone does not capture which information contributed to the answer or the cost of retrieving it.
+Consequently, subsequent queries cannot reuse this experience to prioritize useful evidence or avoid unnecessary retrieval.
+
+Second, \emph{query processing} primarily focuses on retrieving relevant facts without explicitly handling query-specific computations. For example, finding an activity organizer requires a single fact, counting outdoor activities requires examining all activities, and finding the organizer of the longest outdoor activity requires comparing durations before identifying the organizer. A generic retrieval workflow may return relevant facts without completing these computations. Moreover, without considering previous execution experience, the system may repeat completed work or waste computation on already verified facts.
+
+%Table~\ref{tbl:positioning} separates what a system stores from how it
+%uses that state. Content maintenance and feedback-guided access are
+%well studied; combining memory-use records with query composition and
+%execution decisions remains a gap. Consider Alice's March
+%activities in Figure~\ref{fig:motivating}: a hike organized by Ava, a
+%pottery class organized by Ben, and a ride organized by Cara. For
+%\emph{Whom should I contact to repeat my March outdoor activities?},
+%memory returns three settings and three organizer links. A supported
+%response needs all settings to distinguish outdoor from indoor activities,
+%but only the Ava/Cara links. The agent reports which returned evidence it
+%used. The conversation records the answer; the fact collection
+%records the activities. Neither state alone identifies the evidence
+%returned but unreported, the indoor setting credited for exclusion, or the cost
+%of obtaining these facts. A management policy that sees only content or
+%a relevance score loses this distinction across %queries.
+
+%The same gap affects execution. An organizer lookup needs one supported
+%fact, an outdoor count needs a covered population and setting judgments,
+%and the longest-outdoor-activity organizer needs durations followed by a
+%winner-to-organizer binding. A predefined retrieval path leaves these
+%computations to answer generation. A predefined repetition budget also
+%ignores whether the relevant facts were already verified. Without a
+%record connecting previous evidence use and acquisition outcomes to
+%the current query, execution can repeat completed work while leaving a
+%missing value or binding unresolved. Learning a retrieval score alone
+%does not specify how to complete these computations or where another
+%LLM call is useful.
+
+%\runin{Our Proposal}
+%We propose \sys{}, a \emph{self-evolving memory management system} for
+%LLM agents. Here, self-evolving means that the system persistently records
+%historical agent--memory interactions and uses them to change later
+%evidence priorities, reuse decisions, and execution effort for the user.
+%Content updates extend what the agent knows; interaction experience
+%changes how the memory system serves subsequent queries. Realizing this
+%design raises two technical challenges.
 
 \runin{Our Proposal}
-We propose \sys{}, a \emph{self-evolving memory management system} for
-LLM agents. Here, self-evolving means that the system persistently records
-historical agent--memory interactions and uses them to change later
-evidence priorities, reuse decisions, and execution effort for the user.
-Content updates extend what the agent knows; interaction experience
-changes how the memory system serves subsequent queries. Realizing this
-design raises two technical challenges.
+We propose \sys{}, a \emph{self-evolving memory management system} for LLM agents. The key idea is to jointly manage conversation history and memory query history, using execution feedback from past queries to improve subsequent query processing.
+Realizing this design raises two technical challenges.
 
-\stitle{How to store: attributing memory use.}
-Memory use is only partly visible in an answer. Alice's contact answer
-names Ava and Cara, yet pottery's indoor setting is essential to excluding
-the class. Crediting every retrieved fact would reward Ben's unreported
-organizer link; crediting only answer mentions would miss the exclusion
-evidence. Derived results, missing reports, and fact updates further
-complicate attribution.
-We introduce a \textbf{three-level architecture}
-(Section~\ref{sec:overview}). Raw sessions retain conversations;
-first-order memory stores facts extracted for queries; second-order memory
-records their retrieval, reported use, execution outcomes, and costs.
-An identifier distinguishes each fact and its temporal version, linking
-use reports to the exact returned facts. For a computed result, derivation
-links identify the facts needed to produce it and propagate reported-use
-credit to them, including exclusion evidence. Updates count each
-query--fact-version pair once and maintain separate return/use statistics
-alongside action outcomes and costs. These records guide later evidence
-access and execution.
+%\stitle{How to store: attributing memory use.}
+%Memory use is only partly visible in an answer. Alice's contact answer
+%names Ava and Cara, yet pottery's indoor setting is essential to excluding
+%the class. Crediting every retrieved fact would reward Ben's unreported
+%organizer link; crediting only answer mentions would miss the exclusion
+%evidence. Derived results, missing reports, and fact updates further
+%complicate attribution.
+%We introduce a \textbf{three-level architecture}
+%(Section~\ref{sec:overview}). Raw sessions retain conversations;
+%first-order memory stores facts extracted for queries; second-order memory
+%records their retrieval, reported use, execution outcomes, and costs.
+%An identifier distinguishes each fact and its temporal version, linking
+%use reports to the exact returned facts. For a computed result, derivation
+%links identify the facts needed to produce it and propagate reported-use
+%credit to them, including exclusion evidence. Updates count each
+%query--fact-version pair once and maintain separate return/use statistics
+%alongside action outcomes and costs. These records guide later evidence
+%access and execution.
 
-\stitle{How to use: adapting query execution.}
-The benefit of acquiring or verifying a fact depends on existing evidence
-and the later requests that need it. In Alice's longest-activity query, acquiring
-durations resolves the winner and unlocks its organizer lookup;
-rechecking verified settings adds no evidence. Discovering another
-activity can enlarge the remaining work even after a useful call.
-We develop \textbf{workload-aware memory queries}, adapting access and
-execution to the current query and past memory-use records. They connect
-\emph{query-specific pipelines for accuracy}
+%\stitle{How to use: adapting query execution.}
+%The benefit of acquiring or verifying a fact depends on existing evidence
+%and the later requests that need it. In Alice's longest-activity query, acquiring
+%durations resolves the winner and unlocks its organizer lookup;
+%rechecking verified settings adds no evidence. Discovering another
+%activity can enlarge the remaining work even after a useful call.
+%We develop \textbf{workload-aware memory queries}, adapting access and
+%execution to the current query and past memory-%use records. They connect
+%\emph{query-specific pipelines for accuracy}
+%(Section~\ref{sec:framework}) with \emph{cost-aware execution}
+%(Section~\ref{sec:executor}). The pipelines distinguish single-fact
+%retrieval, independent composition of requests with no cross-request inputs,
+%and dependent composition in which a request uses an earlier result.
+%Within a pipeline, verified facts identify
+%reusable results and unresolved checks; second-%order experience guides
+%access and estimates the resolution and cost of additional actions.
+%The executor evaluates individual steps together with the prerequisite
+%work they need, reserves an upper bound on their call cost, and reselects
+%work after each evidence update. Alice's query thus reuses settings,
+%acquires durations, compares $4>3$, and binds the hike to Ava; repeating
+%the comparison reuses the verified durations.
+
+\stitle{Challenge C1: Accurate Memory-Use Attribution.}
+The first challenge is to maintain query execution history by accurately attributing query results to their supporting facts.
+For example, Alice's contact query returns Ava and Cara, but the indoor pottery class is also needed to exclude Ben.
+Recording all retrieved facts includes irrelevant evidence, while tracking only facts mentioned in the answer misses evidence used for exclusion.
+
+To address this challenge, \sys introduces a \emph{three-level memory architecture} (Section~\ref{sec:overview}).
+Raw memory retains conversation history, first-order memory stores facts extracted from conversations, and second-order memory maintains memory query history.
+\sys tracks the sources and versions of retrieved facts, together with their reported use, execution outcomes, and costs. For derived results, derivation links identify supporting facts and propagate usage attribution to these facts. The resulting query execution history provides reusable feedback for subsequent query processing.
+
+\stitle{Challenge C2: Adaptive Memory Query Processing.}
+The second challenge is to construct and execute query plans that accommodate different evidence requirements while exploiting historical execution feedback.
+For example, Alice's longest-activity query requires comparing activity durations before retrieving the corresponding organizer.
+Previously verified facts can be reused, while missing information requires additional retrieval.
+
+To address this challenge, \sys combines \emph{query planning}
 (Section~\ref{sec:framework}) with \emph{cost-aware execution}
-(Section~\ref{sec:executor}). The pipelines distinguish single-fact
-retrieval, independent composition of requests with no cross-request inputs,
-and dependent composition in which a request uses an earlier result.
-Within a pipeline, verified facts identify
-reusable results and unresolved checks; second-order experience guides
-access and estimates the resolution and cost of additional actions.
-The executor evaluates individual steps together with the prerequisite
-work they need, reserves an upper bound on their call cost, and reselects
-work after each evidence update. Alice's query thus reuses settings,
-acquires durations, compares $4>3$, and binds the hike to Ava; repeating
-the comparison reuses the verified durations.
+(Section~\ref{sec:executor}).
+\sys constructs query plans for single-fact retrieval, independent composition, and dependent composition, explicitly representing their evidence requirements.
+Using the current evidence state and historical execution feedback, \sys reuses verified facts, allocates query-specific execution budgets, and adaptively selects further retrieval
+operations. Execution outcomes and costs are recorded in second-order memory, enabling subsequent queries to benefit from accumulated experience.
+
+
+%\runin{Contributions}
+%Our contributions are as follows.
+%\begin{itemize}[leftmargin=*,nosep]
+%\item \textbf{A self-evolving memory management %system.}
+%To the best of our knowledge, \sys{} is the first self-evolving memory
+%management system for LLM agents that jointly adapts evidence access,
+%reuse, and execution effort from stored agent--memory
+%interactions.
+%\item \textbf{Three-level memory organization.}
+%We connect raw sessions, query-induced facts, and second-order
+%interaction experience through fact-version identifiers and derivation
+%links. The architecture maintains version-%specific use attribution and
+%action histories for later access and execution decisions, while
+%preserving the source support of reusable facts.
+%\item \textbf{Workload-aware memory queries.}
+%We develop query-specific pipelines with explicit coverage and binding
+%requirements, together with cost-aware execution that reuses verified
+%results and selects unresolved work by predicted evidence benefit and
+%cost.
+%\item \textbf{Strong performance.}
+%Across eight long-term memory benchmarks, \sys{} matches or improves
+%the strongest evaluated prior system on each benchmark, with an average
+%gain of $2.6$ points. On \membench{}, it %achieves higher accuracy with $50.7\%$
+%fewer memory-side LLM calls than a fixed three-%call budget. Experiments with eight LLM backbones
+%further examine the approach's generality.
+%\end{itemize}
 
 \runin{Contributions}
-Our contributions are as follows.
+Our contributions are summarized as follows.
 \begin{itemize}[leftmargin=*,nosep]
-\item \textbf{A self-evolving memory management system.}
-To the best of our knowledge, \sys{} is the first self-evolving memory
-management system for LLM agents that jointly adapts evidence access,
-reuse, and execution effort from version-linked agent--memory
-interactions.
-\item \textbf{Three-level memory organization.}
-We connect raw sessions, query-induced facts, and second-order
-interaction experience through fact-version identifiers and derivation
-links. The architecture maintains version-specific use attribution and
-action histories for later access and execution decisions, while
-preserving the source support of reusable facts.
-\item \textbf{Workload-aware memory queries.}
-We develop query-specific pipelines with explicit coverage and binding
-requirements, together with cost-aware execution that reuses verified
-results and selects unresolved work by predicted evidence benefit and
-cost.
-\item \textbf{Strong performance.}
-Across eight long-term memory benchmarks, \sys{} matches or improves
-the strongest evaluated prior system on each benchmark, with an average
-gain of $2.6$ points. On \membench{}, it achieves higher accuracy with $50.7\%$
-fewer memory-side LLM calls than a fixed three-call budget. Experiments with eight LLM backbones
-further examine the approach's generality.
+\item \textbf{Self-evolving memory management.}
+We introduce \sys{}, a memory management system that continually evolves both stored information and query processing by retaining conversation history and memory query history, and using historical execution feedback to improve subsequent queries.
+
+\item \textbf{Memory organization and query processing.}
+We develop a three-level memory architecture that maintains conversation history, extracted facts, and memory query history with source and version tracking.
+We further propose query planning and cost-aware execution that handle different evidence requirements, reuse verified facts, and adapt execution effort based on historical feedback.
+
+\item \textbf{Experimental evaluation.}
+Across eight long-term memory benchmarks, \sys{} matches or outperforms the strongest evaluated prior system on every benchmark, as shown in Figure~\ref{fig:scoreboard}, with an average improvement of 2.6 points.
+On \membench{}, it achieves higher accuracy with 50.7\% fewer memory-side LLM calls than a fixed three-call budget. Experiments with eight LLM backbones further evaluate its generality.
 \end{itemize}
 
 \input{figures/tex/introduction_scoreboard}

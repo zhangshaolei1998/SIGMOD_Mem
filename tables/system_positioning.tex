@@ -2,20 +2,17 @@
 \begin{table*}[t]
 \centering
 \small
-\caption{Memory storage and use in representative systems.
-Storage covers conversation histories, extracted facts, and retained
-memory-operation records. Query-aware optimization adapts computation or
-control to the query; cost-aware optimization selects execution work by
-estimated cost; history-aware optimization uses past agent--memory
-feedback to adapt later queries.
+\caption{
+Memory organization and query processing in representative memory systems. Memory organization covers conversation histories, extracted facts, and memory-operation records. Query processing includes query-aware, cost-aware, and history-aware optimization. Query-aware optimization adapts execution to query requirements; cost-aware optimization selects execution strategies based on estimated costs; history-aware optimization uses past agent–memory interactions to guide subsequent queries.
+%Memory storage and use in representative systems. Storage covers conversation histories, extracted facts, and retained memory-operation records. Query-aware optimization adapts computation or control to the query; cost-aware optimization selects execution work by estimated cost; history-aware optimization uses past agent--memory feedback to adapt later queries.
 $\checkmark$: explicitly described; $\times$: not described for that purpose.}
 \label{tbl:positioning}
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.15}
 \begin{tabular}{@{}lcccccc@{}}
 \toprule
-\multirow{2}{*}{\textbf{System}} & \multicolumn{3}{c}{\textbf{Storage}}
-  & \multicolumn{3}{c}{\textbf{Use}}\\
+\multirow{2}{*}{\textbf{System}} & \multicolumn{3}{c}{\textbf{Memory Organization}}
+  & \multicolumn{3}{c}{\textbf{Query Processing}}\\
 \cmidrule(lr){2-4}\cmidrule(l){5-7}
 & \makecell{user--agent\\interaction} & \makecell{Extracted\\facts}
 & \makecell{agent--memory\\interaction}
@@ -25,7 +22,7 @@ $\checkmark$: explicitly described; $\times$: not described for that purpose.}
 \midrule
 VikingMem~\cite{vikingmem} & $\times$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & $\times$\\
 MemLens~\cite{memlens} & $\checkmark$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & $\times$\\
-MemGPT~\cite{memgpt} & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\times$ & $\times$\\
+MemGPT~\cite{memgpt} & $\checkmark$ & $\checkmark$ & $\times$ & $\checkmark$ & $\times$ & $\times$\\
 Mem0 / Mem0$^g$~\cite{mem0} & $\times$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & $\times$\\
 Zep~\cite{zep} & $\checkmark$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & $\times$\\
 MemoryBank~\cite{memorybank} & $\checkmark$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & $\times$\\
